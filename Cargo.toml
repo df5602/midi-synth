@@ -1,0 +1,9 @@
+[package]
+name = "midi-synth"
+version = "0.1.0"
+authors = ["df5602 <dominik@fankhausers.ch>"]
+
+[dependencies]
+libusb = "*"
+itertools = "*"
+error-chain = "*"

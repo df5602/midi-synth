@@ -1,0 +1,94 @@
+extern crate itertools;
+extern crate libusb;
+
+#[macro_use]
+extern crate error_chain;
+
+mod errors;
+
+use itertools::Itertools;
+
+use std::time::Duration;
+
+use errors::*;
+use error_chain::ChainedError;
+
+#[allow(dead_code)]
+fn describe_device(device: &libusb::Device) -> Result<()> {
+    let config_desc = device.active_config_descriptor()?;
+
+    println!("Found keyboard:");
+    println!("Active Configuration: {}", config_desc.number());
+    println!("Number of Interfaces: {}", config_desc.num_interfaces());
+
+    for interface in config_desc.interfaces() {
+        println!();
+        println!("Interface {}", interface.number());
+
+        for interface_desc in interface.descriptors() {
+            println!();
+            println!("Number of endpoints: {}", interface_desc.num_endpoints());
+
+            for endpoint in interface_desc.endpoint_descriptors() {
+                println!();
+                println!("Endpoint {}", endpoint.number());
+                println!("Address {}", endpoint.address());
+                println!("Direction: {:?}", endpoint.direction());
+                println!("Transfer Type: {:?}", endpoint.transfer_type());
+                println!("Sync Type: {:?}", endpoint.sync_type());
+                println!("Usage Type: {:?}", endpoint.usage_type());
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn run() -> Result<()> {
+    let context = libusb::Context::new().chain_err(|| "Failed to initialize libusb")?;
+
+    let mut handle = None;
+    for device in context
+        .devices()
+        .chain_err(|| "Failed to list USB devices")?
+        .iter()
+    {
+        let device_desc = device.device_descriptor()?;
+
+        if device_desc.vendor_id() == 0xa4d && device_desc.product_id() == 0x90 {
+            handle = Some(device.open().chain_err(|| "Failed to open USB device")?);
+            break;
+        }
+    }
+
+    let mut handle = match handle {
+        Some(handle) => handle,
+        None => {
+            println!("No keyboard found.");
+            return Ok(());
+        }
+    };
+
+    handle
+        .claim_interface(1)
+        .chain_err(|| "Failed to claim interface 1")?;
+
+    let mut buf: [u8; 1024] = [0; 1024];
+
+    loop {
+        let read = handle
+            .read_bulk(129, &mut buf, Duration::from_secs(10))
+            .chain_err(|| "Failed to read from USB device")?;
+
+        println!("Read {} bytes:", read);
+        println!("0x{:02x}", buf[0..read].iter().format(""));
+    }
+}
+
+fn main() {
+    if let Err(ref e) = run() {
+        println!("{}", e.display_chain().to_string());
+
+        ::std::process::exit(1);
+    }
+}
