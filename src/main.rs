@@ -5,6 +5,7 @@ extern crate libusb;
 extern crate error_chain;
 
 mod errors;
+mod usb_midi;
 
 use itertools::Itertools;
 
@@ -12,6 +13,8 @@ use std::time::Duration;
 
 use errors::*;
 use error_chain::ChainedError;
+
+use usb_midi::MidiParseStatus;
 
 #[allow(dead_code)]
 fn describe_device(device: &libusb::Device) -> Result<()> {
@@ -73,15 +76,39 @@ fn run() -> Result<()> {
         .claim_interface(1)
         .chain_err(|| "Failed to claim interface 1")?;
 
-    let mut buf: [u8; 1024] = [0; 1024];
+    let mut buf: [u8; 256] = [0; 256];
 
+    let mut begin = 0;
+    let mut end = 0;
     loop {
         let read = handle
-            .read_bulk(129, &mut buf, Duration::from_secs(10))
+            .read_bulk(129, &mut buf[end..], Duration::from_secs(60))
             .chain_err(|| "Failed to read from USB device")?;
+        end += read;
 
         println!("Read {} bytes:", read);
-        println!("0x{:02x}", buf[0..read].iter().format(""));
+        println!("0x{:02x}", buf[begin..end].iter().format(""));
+
+        while begin < end {
+            match usb_midi::from_bytes(&buf[begin..end]) {
+                (MidiParseStatus::Complete(packet), n) => {
+                    println!("{}", packet.midi_message());
+                    begin += n;
+                }
+                (MidiParseStatus::Incomplete, _) => {
+                    break;
+                }
+                (MidiParseStatus::Unknown, n) => {
+                    println!("Unknown MIDI message");
+                    begin += n;
+                }
+            }
+        }
+
+        if begin >= end {
+            begin = 0;
+            end = 0;
+        }
     }
 }
 
