@@ -14,7 +14,7 @@ use std::time::Duration;
 use errors::*;
 use error_chain::ChainedError;
 
-use usb_midi::MidiParseStatus;
+use usb_midi::{MidiParseStatus, UsbMidiParser};
 
 #[allow(dead_code)]
 fn describe_device(device: &libusb::Device) -> Result<()> {
@@ -77,6 +77,7 @@ fn run() -> Result<()> {
         .chain_err(|| "Failed to claim interface 1")?;
 
     let mut buf: [u8; 256] = [0; 256];
+    let mut usb_midi_parser = UsbMidiParser::new();
 
     let mut begin = 0;
     let mut end = 0;
@@ -90,16 +91,21 @@ fn run() -> Result<()> {
         println!("0x{:02x}", buf[begin..end].iter().format(""));
 
         while begin < end {
-            match usb_midi::from_bytes(&buf[begin..end]) {
+            match usb_midi_parser.parse(&buf[begin..end]) {
                 (MidiParseStatus::Complete(packet), n) => {
                     println!("{}", packet.midi_message());
                     begin += n;
                 }
-                (MidiParseStatus::Incomplete, _) => {
+                (MidiParseStatus::Incomplete, n) => {
+                    begin += n;
                     break;
                 }
                 (MidiParseStatus::Unknown, n) => {
                     println!("Unknown MIDI message");
+                    begin += n;
+                }
+                (MidiParseStatus::MalformedPacket, n) => {
+                    println!("Malformed packet");
                     begin += n;
                 }
             }
