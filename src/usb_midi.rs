@@ -156,14 +156,29 @@ impl fmt::Display for ProgramChange {
 }
 
 #[derive(Clone, PartialEq, Debug)]
+pub enum SystemExlusiveId {
+    OneByte(u8),
+    TwoByte(u8, u8),
+}
+
+impl fmt::Display for SystemExlusiveId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            SystemExlusiveId::OneByte(a) => write!(f, "0x{:02x}", a),
+            SystemExlusiveId::TwoByte(a, b) => write!(f, "0x00 0x{:02x} 0x{:02x}", a, b),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
 pub struct SystemExclusive {
-    id: u16,
+    id: SystemExlusiveId,
     payload: Vec<u8>,
 }
 
 impl SystemExclusive {
-    pub fn id(&self) -> u16 {
-        self.id
+    pub fn id(&self) -> SystemExlusiveId {
+        self.id.clone()
     }
 
     pub fn payload(&self) -> &Vec<u8> {
@@ -307,11 +322,13 @@ impl SysExIdStatus {
         true
     }
 
-    fn get_id_and_reset(&mut self) -> u16 {
+    fn get_id_and_reset(&mut self) -> SystemExlusiveId {
         let id = match *self {
-            SysExIdStatus::Empty | SysExIdStatus::NeedTwoMore | SysExIdStatus::NeedOneMore(_) => 0,
-            SysExIdStatus::OneByte(id) => u16::from(id),
-            SysExIdStatus::TwoByte(a, b) => u16::from(a) << 8 | u16::from(b),
+            SysExIdStatus::Empty | SysExIdStatus::NeedTwoMore | SysExIdStatus::NeedOneMore(_) => {
+                SystemExlusiveId::OneByte(0)
+            }
+            SysExIdStatus::OneByte(id) => SystemExlusiveId::OneByte(id),
+            SysExIdStatus::TwoByte(a, b) => SystemExlusiveId::TwoByte(a, b),
         };
 
         *self = SysExIdStatus::Empty;
@@ -631,7 +648,7 @@ mod tests {
 
         let expected: Vec<u8> = vec![0x1];
         assert_eq!(expected, *system_exclusive.payload());
-        assert_eq!(0x7e, system_exclusive.id());
+        assert_eq!(SystemExlusiveId::OneByte(0x7e), system_exclusive.id());
     }
 
     #[test]
@@ -656,7 +673,7 @@ mod tests {
 
         let expected: Vec<u8> = vec![0x1, 0x2];
         assert_eq!(expected, *system_exclusive.payload());
-        assert_eq!(0x7e, system_exclusive.id());
+        assert_eq!(SystemExlusiveId::OneByte(0x7e), system_exclusive.id());
     }
 
     #[test]
@@ -681,7 +698,7 @@ mod tests {
 
         let expected: Vec<u8> = vec![0x1, 0x2, 0x3];
         assert_eq!(expected, *system_exclusive.payload());
-        assert_eq!(0x7e, system_exclusive.id());
+        assert_eq!(SystemExlusiveId::OneByte(0x7e), system_exclusive.id());
     }
 
     #[test]
@@ -719,7 +736,7 @@ mod tests {
 
         let expected: Vec<u8> = vec![0x1, 0x2, 0x3, 0x4];
         assert_eq!(expected, *system_exclusive.payload());
-        assert_eq!(0x7e, system_exclusive.id());
+        assert_eq!(SystemExlusiveId::OneByte(0x7e), system_exclusive.id());
     }
 
     #[test]
@@ -761,7 +778,7 @@ mod tests {
 
         let expected: Vec<u8> = vec![0x1];
         assert_eq!(expected, *system_exclusive.payload());
-        assert_eq!(0x7e, system_exclusive.id());
+        assert_eq!(SystemExlusiveId::OneByte(0x7e), system_exclusive.id());
 
         let midi_message = usb_midi_parser.parse(&buf[12..]);
 
@@ -781,7 +798,7 @@ mod tests {
 
         let expected: Vec<u8> = vec![0x5, 0x6];
         assert_eq!(expected, *system_exclusive.payload());
-        assert_eq!(0x7e, system_exclusive.id());
+        assert_eq!(SystemExlusiveId::OneByte(0x7e), system_exclusive.id());
     }
 
     #[test]
@@ -806,7 +823,7 @@ mod tests {
 
         let expected: Vec<u8> = vec![0x3];
         assert_eq!(expected, *system_exclusive.payload());
-        assert_eq!(0x1011, system_exclusive.id());
+        assert_eq!(SystemExlusiveId::TwoByte(0x10, 0x11), system_exclusive.id());
     }
 
     #[test]
@@ -848,7 +865,7 @@ mod tests {
 
         let expected: Vec<u8> = vec![0x3];
         assert_eq!(expected, *system_exclusive.payload());
-        assert_eq!(0x1011, system_exclusive.id());
+        assert_eq!(SystemExlusiveId::TwoByte(0x10, 0x11), system_exclusive.id());
 
         let midi_message = usb_midi_parser.parse(&buf[12..]);
 
@@ -868,7 +885,7 @@ mod tests {
 
         let expected: Vec<u8> = vec![0x5];
         assert_eq!(expected, *system_exclusive.payload());
-        assert_eq!(0x1234, system_exclusive.id());
+        assert_eq!(SystemExlusiveId::TwoByte(0x12, 0x34), system_exclusive.id());
     }
 
     #[test]
@@ -910,7 +927,7 @@ mod tests {
 
         let expected: Vec<u8> = vec![0x3];
         assert_eq!(expected, *system_exclusive.payload());
-        assert_eq!(0x1011, system_exclusive.id());
+        assert_eq!(SystemExlusiveId::TwoByte(0x10, 0x11), system_exclusive.id());
 
         let midi_message = usb_midi_parser.parse(&buf[8..]);
 
@@ -930,7 +947,7 @@ mod tests {
 
         let expected: Vec<u8> = vec![0x42];
         assert_eq!(expected, *system_exclusive.payload());
-        assert_eq!(0x7e, system_exclusive.id());
+        assert_eq!(SystemExlusiveId::OneByte(0x7e), system_exclusive.id());
     }
 
     #[test]
