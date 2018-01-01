@@ -87,9 +87,6 @@ fn run() -> Result<()> {
             .chain_err(|| "Failed to read from USB device")?;
         end += read;
 
-        println!("Read {} bytes:", read);
-        println!("0x{:02x}", buf[begin..end].iter().format(""));
-
         while begin < end {
             match usb_midi_parser.parse(&buf[begin..end]) {
                 (MidiParseStatus::Complete(packet), n) => {
@@ -101,11 +98,17 @@ fn run() -> Result<()> {
                     break;
                 }
                 (MidiParseStatus::Unknown, n) => {
-                    println!("Unknown MIDI message");
+                    println!(
+                        "Unknown MIDI message: 0x{:02x}",
+                        buf[begin..end].iter().format(" 0x")
+                    );
                     begin += n;
                 }
                 (MidiParseStatus::MalformedPacket, n) => {
-                    println!("Malformed packet");
+                    println!(
+                        "Malformed packet: 0x{:02x}",
+                        buf[begin..end].iter().format(" 0x")
+                    );
                     begin += n;
                 }
             }

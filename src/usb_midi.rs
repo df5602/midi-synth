@@ -129,6 +129,178 @@ impl fmt::Display for ControlChange {
 }
 
 #[derive(Clone, PartialEq, Debug)]
+pub struct AllSoundOff {
+    channel: u8,
+}
+
+impl AllSoundOff {
+    pub fn channel(&self) -> u8 {
+        self.channel
+    }
+}
+
+impl fmt::Display for AllSoundOff {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Channel Mode, Channel: {}, All Sound Off",
+            self.channel(),
+        )
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct ResetAllControllers {
+    channel: u8,
+}
+
+impl ResetAllControllers {
+    pub fn channel(&self) -> u8 {
+        self.channel
+    }
+}
+
+impl fmt::Display for ResetAllControllers {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Channel Mode, Channel: {}, Reset All Controllers",
+            self.channel(),
+        )
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct LocalControl {
+    channel: u8,
+    on: bool,
+}
+
+impl LocalControl {
+    pub fn channel(&self) -> u8 {
+        self.channel
+    }
+
+    pub fn on(&self) -> bool {
+        self.on
+    }
+}
+
+impl fmt::Display for LocalControl {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Channel Mode, Channel: {}, Local Control {}",
+            self.channel(),
+            if self.on() { "On" } else { "Off" }
+        )
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct AllNotesOff {
+    channel: u8,
+}
+
+impl AllNotesOff {
+    pub fn channel(&self) -> u8 {
+        self.channel
+    }
+}
+
+impl fmt::Display for AllNotesOff {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Channel Mode, Channel: {}, All Notes Off",
+            self.channel(),
+        )
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct OmniModeOff {
+    channel: u8,
+}
+
+impl OmniModeOff {
+    pub fn channel(&self) -> u8 {
+        self.channel
+    }
+}
+
+impl fmt::Display for OmniModeOff {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Channel Mode, Channel: {}, Omni Mode Off",
+            self.channel(),
+        )
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct OmniModeOn {
+    channel: u8,
+}
+
+impl OmniModeOn {
+    pub fn channel(&self) -> u8 {
+        self.channel
+    }
+}
+
+impl fmt::Display for OmniModeOn {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Channel Mode, Channel: {}, Omni Mode On", self.channel())
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct MonoModeOn {
+    channel: u8,
+    number_of_channels: u8,
+}
+
+impl MonoModeOn {
+    pub fn channel(&self) -> u8 {
+        self.channel
+    }
+
+    pub fn number_of_channels(&self) -> u8 {
+        self.number_of_channels
+    }
+}
+
+impl fmt::Display for MonoModeOn {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Channel Mode, Channel: {}, Mono Mode On, Number of channels: {}",
+            self.channel(),
+            self.number_of_channels()
+        )
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct PolyModeOn {
+    channel: u8,
+}
+
+impl PolyModeOn {
+    pub fn channel(&self) -> u8 {
+        self.channel
+    }
+}
+
+impl fmt::Display for PolyModeOn {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Channel Mode, Channel: {}, Poly Mode On", self.channel())
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
 pub struct ProgramChange {
     channel: u8,
     program_number: u8,
@@ -203,6 +375,14 @@ pub enum MidiMessage {
     NoteOff(NoteOff),
     PitchBend(PitchBend),
     ControlChange(ControlChange),
+    AllSoundOff(AllSoundOff),
+    ResetAllControllers(ResetAllControllers),
+    LocalControl(LocalControl),
+    AllNotesOff(AllNotesOff),
+    OmniModeOff(OmniModeOff),
+    OmniModeOn(OmniModeOn),
+    MonoModeOn(MonoModeOn),
+    PolyModeOn(PolyModeOn),
     ProgramChange(ProgramChange),
     SystemExlusive(SystemExclusive),
 }
@@ -210,12 +390,20 @@ pub enum MidiMessage {
 impl fmt::Display for MidiMessage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            MidiMessage::NoteOn(ref note_on) => write!(f, "{}", note_on),
-            MidiMessage::NoteOff(ref note_off) => write!(f, "{}", note_off),
-            MidiMessage::PitchBend(ref pitch_bend) => write!(f, "{}", pitch_bend),
-            MidiMessage::ControlChange(ref control_change) => write!(f, "{}", control_change),
-            MidiMessage::ProgramChange(ref program_change) => write!(f, "{}", program_change),
-            MidiMessage::SystemExlusive(ref system_exclusive) => write!(f, "{}", system_exclusive),
+            MidiMessage::NoteOn(ref inner) => write!(f, "{}", inner),
+            MidiMessage::NoteOff(ref inner) => write!(f, "{}", inner),
+            MidiMessage::PitchBend(ref inner) => write!(f, "{}", inner),
+            MidiMessage::ControlChange(ref inner) => write!(f, "{}", inner),
+            MidiMessage::AllSoundOff(ref inner) => write!(f, "{}", inner),
+            MidiMessage::ResetAllControllers(ref inner) => write!(f, "{}", inner),
+            MidiMessage::LocalControl(ref inner) => write!(f, "{}", inner),
+            MidiMessage::AllNotesOff(ref inner) => write!(f, "{}", inner),
+            MidiMessage::OmniModeOff(ref inner) => write!(f, "{}", inner),
+            MidiMessage::OmniModeOn(ref inner) => write!(f, "{}", inner),
+            MidiMessage::MonoModeOn(ref inner) => write!(f, "{}", inner),
+            MidiMessage::PolyModeOn(ref inner) => write!(f, "{}", inner),
+            MidiMessage::ProgramChange(ref inner) => write!(f, "{}", inner),
+            MidiMessage::SystemExlusive(ref inner) => write!(f, "{}", inner),
         }
     }
 }
@@ -249,11 +437,32 @@ impl MidiMessage {
                     })
                 }
             }
-            0xb => MidiMessage::ControlChange(ControlChange {
-                channel: channel,
-                control_number: input[1] & 0x7F,
-                control_value: input[2] & 0x7F,
-            }),
+            0xb => {
+                let control_number = input[1] & 0x7F;
+                match control_number {
+                    120 => MidiMessage::AllSoundOff(AllSoundOff { channel: channel }),
+                    121 => {
+                        MidiMessage::ResetAllControllers(ResetAllControllers { channel: channel })
+                    }
+                    122 => MidiMessage::LocalControl(LocalControl {
+                        channel: channel,
+                        on: input[2] & 0x7F >= 64,
+                    }),
+                    123 => MidiMessage::AllNotesOff(AllNotesOff { channel: channel }),
+                    124 => MidiMessage::OmniModeOff(OmniModeOff { channel: channel }),
+                    125 => MidiMessage::OmniModeOn(OmniModeOn { channel: channel }),
+                    126 => MidiMessage::MonoModeOn(MonoModeOn {
+                        channel: channel,
+                        number_of_channels: input[2] & 0x0F,
+                    }),
+                    127 => MidiMessage::PolyModeOn(PolyModeOn { channel: channel }),
+                    _ => MidiMessage::ControlChange(ControlChange {
+                        channel: channel,
+                        control_number: control_number,
+                        control_value: input[2] & 0x7F,
+                    }),
+                }
+            }
             0xc => MidiMessage::ProgramChange(ProgramChange {
                 channel: channel,
                 program_number: input[1] & 0x7F,
@@ -586,6 +795,192 @@ mod tests {
         assert_eq!(3, control_change.channel());
         assert_eq!(1, control_change.control_number());
         assert_eq!(0x50, control_change.control_value());
+    }
+
+    #[test]
+    fn parse_returns_all_sound_off_channel_mode_message() {
+        let buf: [u8; 4] = [0x2b, 0xb1, 120, 0x00];
+        let mut usb_midi_parser = UsbMidiParser::new();
+        let midi_message = usb_midi_parser.parse(&buf);
+
+        let midi_message = match midi_message {
+            (MidiParseStatus::Complete(packet), n) => {
+                assert_eq!(2, packet.cable_number());
+                assert_eq!(4, n);
+                packet.midi_message()
+            }
+            _ => panic!("wrong variant"),
+        };
+
+        let all_sound_off = match midi_message {
+            MidiMessage::AllSoundOff(all_sound_off) => all_sound_off,
+            _ => panic!("wrong variant"),
+        };
+
+        assert_eq!(1, all_sound_off.channel());
+    }
+
+    #[test]
+    fn parse_returns_reset_all_controllers_channel_mode_message() {
+        let buf: [u8; 4] = [0x2b, 0xb1, 121, 0x00];
+        let mut usb_midi_parser = UsbMidiParser::new();
+        let midi_message = usb_midi_parser.parse(&buf);
+
+        let midi_message = match midi_message {
+            (MidiParseStatus::Complete(packet), n) => {
+                assert_eq!(2, packet.cable_number());
+                assert_eq!(4, n);
+                packet.midi_message()
+            }
+            _ => panic!("wrong variant"),
+        };
+
+        let reset_all_controllers = match midi_message {
+            MidiMessage::ResetAllControllers(reset_all_controllers) => reset_all_controllers,
+            _ => panic!("wrong variant"),
+        };
+
+        assert_eq!(1, reset_all_controllers.channel());
+    }
+
+    #[test]
+    fn parse_returns_local_control_channel_mode_message() {
+        let buf: [u8; 4] = [0x2b, 0xb1, 122, 0x7F];
+        let mut usb_midi_parser = UsbMidiParser::new();
+        let midi_message = usb_midi_parser.parse(&buf);
+
+        let midi_message = match midi_message {
+            (MidiParseStatus::Complete(packet), n) => {
+                assert_eq!(2, packet.cable_number());
+                assert_eq!(4, n);
+                packet.midi_message()
+            }
+            _ => panic!("wrong variant"),
+        };
+
+        let local_control = match midi_message {
+            MidiMessage::LocalControl(local_control) => local_control,
+            _ => panic!("wrong variant"),
+        };
+
+        assert_eq!(1, local_control.channel());
+        assert_eq!(true, local_control.on());
+    }
+
+    #[test]
+    fn parse_returns_all_notes_off_channel_mode_message() {
+        let buf: [u8; 4] = [0x2b, 0xb1, 123, 0x00];
+        let mut usb_midi_parser = UsbMidiParser::new();
+        let midi_message = usb_midi_parser.parse(&buf);
+
+        let midi_message = match midi_message {
+            (MidiParseStatus::Complete(packet), n) => {
+                assert_eq!(2, packet.cable_number());
+                assert_eq!(4, n);
+                packet.midi_message()
+            }
+            _ => panic!("wrong variant"),
+        };
+
+        let all_notes_off = match midi_message {
+            MidiMessage::AllNotesOff(all_notes_off) => all_notes_off,
+            _ => panic!("wrong variant"),
+        };
+
+        assert_eq!(1, all_notes_off.channel());
+    }
+
+    #[test]
+    fn parse_returns_omni_mode_off_channel_mode_message() {
+        let buf: [u8; 4] = [0x2b, 0xb1, 124, 0x00];
+        let mut usb_midi_parser = UsbMidiParser::new();
+        let midi_message = usb_midi_parser.parse(&buf);
+
+        let midi_message = match midi_message {
+            (MidiParseStatus::Complete(packet), n) => {
+                assert_eq!(2, packet.cable_number());
+                assert_eq!(4, n);
+                packet.midi_message()
+            }
+            _ => panic!("wrong variant"),
+        };
+
+        let omni_mode_off = match midi_message {
+            MidiMessage::OmniModeOff(omni_mode_off) => omni_mode_off,
+            _ => panic!("wrong variant"),
+        };
+
+        assert_eq!(1, omni_mode_off.channel());
+    }
+
+    #[test]
+    fn parse_returns_omni_mode_on_channel_mode_message() {
+        let buf: [u8; 4] = [0x2b, 0xb1, 125, 0x00];
+        let mut usb_midi_parser = UsbMidiParser::new();
+        let midi_message = usb_midi_parser.parse(&buf);
+
+        let midi_message = match midi_message {
+            (MidiParseStatus::Complete(packet), n) => {
+                assert_eq!(2, packet.cable_number());
+                assert_eq!(4, n);
+                packet.midi_message()
+            }
+            _ => panic!("wrong variant"),
+        };
+
+        let omni_mode_on = match midi_message {
+            MidiMessage::OmniModeOn(omni_mode_on) => omni_mode_on,
+            _ => panic!("wrong variant"),
+        };
+
+        assert_eq!(1, omni_mode_on.channel());
+    }
+
+    #[test]
+    fn parse_returns_mono_mode_on_channel_mode_message() {
+        let buf: [u8; 4] = [0x2b, 0xb1, 126, 0x08];
+        let mut usb_midi_parser = UsbMidiParser::new();
+        let midi_message = usb_midi_parser.parse(&buf);
+
+        let midi_message = match midi_message {
+            (MidiParseStatus::Complete(packet), n) => {
+                assert_eq!(2, packet.cable_number());
+                assert_eq!(4, n);
+                packet.midi_message()
+            }
+            _ => panic!("wrong variant"),
+        };
+
+        let mono_mode_on = match midi_message {
+            MidiMessage::MonoModeOn(mono_mode_on) => mono_mode_on,
+            _ => panic!("wrong variant"),
+        };
+
+        assert_eq!(1, mono_mode_on.channel());
+        assert_eq!(8, mono_mode_on.number_of_channels());
+    }
+
+    #[test]
+    fn parse_returns_poly_mode_on_channel_mode_message() {
+        let buf: [u8; 4] = [0x2b, 0xb1, 127, 0x00];
+        let mut usb_midi_parser = UsbMidiParser::new();
+        let midi_message = usb_midi_parser.parse(&buf);
+
+        let midi_message = match midi_message {
+            (MidiParseStatus::Complete(packet), n) => {
+                assert_eq!(2, packet.cable_number());
+                assert_eq!(4, n);
+                packet.midi_message()
+            }
+            _ => panic!("wrong variant"),
+        };
+
+        let poly_mode_on = match midi_message {
+            MidiMessage::PolyModeOn(poly_mode_on) => poly_mode_on,
+            _ => panic!("wrong variant"),
+        };
+
+        assert_eq!(1, poly_mode_on.channel());
     }
 
     #[test]
