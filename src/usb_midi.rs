@@ -328,6 +328,66 @@ impl fmt::Display for ProgramChange {
 }
 
 #[derive(Clone, PartialEq, Debug)]
+pub struct ChannelPressure {
+    channel: u8,
+    pressure: u8,
+}
+
+impl ChannelPressure {
+    pub fn channel(&self) -> u8 {
+        self.channel
+    }
+
+    pub fn pressure(&self) -> u8 {
+        self.pressure
+    }
+}
+
+impl fmt::Display for ChannelPressure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Channel Pressure, Channel: {}, Pressure value: {}",
+            self.channel(),
+            self.pressure(),
+        )
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct PolyphonicKeyPressure {
+    channel: u8,
+    note_number: u8,
+    pressure: u8,
+}
+
+impl PolyphonicKeyPressure {
+    pub fn channel(&self) -> u8 {
+        self.channel
+    }
+
+    pub fn note_number(&self) -> u8 {
+        self.note_number
+    }
+
+    pub fn pressure(&self) -> u8 {
+        self.pressure
+    }
+}
+
+impl fmt::Display for PolyphonicKeyPressure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Polyphonic Key Pressure, Channel: {}, Note number: {}, Pressure value: {}",
+            self.channel(),
+            self.note_number(),
+            self.pressure(),
+        )
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
 pub enum SystemExlusiveId {
     OneByte(u8),
     TwoByte(u8, u8),
@@ -384,6 +444,8 @@ pub enum MidiMessage {
     MonoModeOn(MonoModeOn),
     PolyModeOn(PolyModeOn),
     ProgramChange(ProgramChange),
+    ChannelPressure(ChannelPressure),
+    PolyphonicKeyPressure(PolyphonicKeyPressure),
     SystemExlusive(SystemExclusive),
 }
 
@@ -403,6 +465,8 @@ impl fmt::Display for MidiMessage {
             MidiMessage::MonoModeOn(ref inner) => write!(f, "{}", inner),
             MidiMessage::PolyModeOn(ref inner) => write!(f, "{}", inner),
             MidiMessage::ProgramChange(ref inner) => write!(f, "{}", inner),
+            MidiMessage::ChannelPressure(ref inner) => write!(f, "{}", inner),
+            MidiMessage::PolyphonicKeyPressure(ref inner) => write!(f, "{}", inner),
             MidiMessage::SystemExlusive(ref inner) => write!(f, "{}", inner),
         }
     }
@@ -437,6 +501,11 @@ impl MidiMessage {
                     })
                 }
             }
+            0xa => MidiMessage::PolyphonicKeyPressure(PolyphonicKeyPressure {
+                channel: channel,
+                note_number: input[1] & 0x7F,
+                pressure: input[2] & 0x7F,
+            }),
             0xb => {
                 let control_number = input[1] & 0x7F;
                 match control_number {
@@ -466,6 +535,10 @@ impl MidiMessage {
             0xc => MidiMessage::ProgramChange(ProgramChange {
                 channel: channel,
                 program_number: input[1] & 0x7F,
+            }),
+            0xd => MidiMessage::ChannelPressure(ChannelPressure {
+                channel: channel,
+                pressure: input[1] & 0x7F,
             }),
             0xe => MidiMessage::PitchBend(PitchBend {
                 channel: channel,
@@ -590,7 +663,7 @@ impl UsbMidiParser {
             let cable_number = (input[n] & 0xF0) >> 4;
             let code_index_number = input[n] & 0x0F;
             result = match code_index_number {
-                0x8 | 0x9 | 0xb | 0xc | 0xe => MidiParseStatus::Complete(EventPacket {
+                0x8 | 0x9 | 0xa | 0xb | 0xc | 0xd | 0xe => MidiParseStatus::Complete(EventPacket {
                     cable_number: cable_number,
                     midi_message: MidiMessage::from_bytes(&input[1..]),
                 }),
@@ -1008,6 +1081,55 @@ mod tests {
     }
 
     #[test]
+    fn parse_returns_channel_pressure_message() {
+        let buf: [u8; 4] = [0x3d, 0xd2, 0x20, 0x0];
+        let mut usb_midi_parser = UsbMidiParser::new();
+        let midi_message = usb_midi_parser.parse(&buf);
+
+        let midi_message = match midi_message {
+            (MidiParseStatus::Complete(packet), n) => {
+                assert_eq!(3, packet.cable_number());
+                assert_eq!(4, n);
+                packet.midi_message()
+            }
+            _ => panic!("wrong variant"),
+        };
+
+        let channel_pressure = match midi_message {
+            MidiMessage::ChannelPressure(channel_pressure) => channel_pressure,
+            _ => panic!("wrong variant"),
+        };
+
+        assert_eq!(2, channel_pressure.channel());
+        assert_eq!(0x20, channel_pressure.pressure());
+    }
+
+    #[test]
+    fn parse_returns_polyphonic_key_pressure_message() {
+        let buf: [u8; 4] = [0x2a, 0xa5, 0x12, 0x13];
+        let mut usb_midi_parser = UsbMidiParser::new();
+        let midi_message = usb_midi_parser.parse(&buf);
+
+        let midi_message = match midi_message {
+            (MidiParseStatus::Complete(packet), n) => {
+                assert_eq!(2, packet.cable_number());
+                assert_eq!(4, n);
+                packet.midi_message()
+            }
+            _ => panic!("wrong variant"),
+        };
+
+        let poly_key_press = match midi_message {
+            MidiMessage::PolyphonicKeyPressure(poly_key_press) => poly_key_press,
+            _ => panic!("wrong variant"),
+        };
+
+        assert_eq!(5, poly_key_press.channel());
+        assert_eq!(0x12, poly_key_press.note_number());
+        assert_eq!(0x13, poly_key_press.pressure());
+    }
+
+    #[test]
     fn parse_starts_system_exclusive_message() {
         let buf: [u8; 4] = [0x24, 0xf0, 0x7e, 0x1];
         let mut usb_midi_parser = UsbMidiParser::new();
@@ -1099,18 +1221,7 @@ mod tests {
     #[test]
     fn parse_ends_system_exclusive_message_with_three_packets() {
         let buf: [u8; 12] = [
-            0x24,
-            0xf0,
-            0x7e,
-            0x1,
-            0x24,
-            0x2,
-            0x3,
-            0x4,
-            0x25,
-            0xf7,
-            0x00,
-            0x00,
+            0x24, 0xf0, 0x7e, 0x1, 0x24, 0x2, 0x3, 0x4, 0x25, 0xf7, 0x00, 0x00
         ];
         let mut usb_midi_parser = UsbMidiParser::new();
         let midi_message = usb_midi_parser.parse(&buf);
@@ -1224,21 +1335,7 @@ mod tests {
     #[test]
     fn parse_ids_of_interleaved_system_exclusive_messages() {
         let buf: [u8; 16] = [
-            0x24,
-            0xf0,
-            0x00,
-            0x10,
-            0x44,
-            0xf0,
-            0x00,
-            0x12,
-            0x27,
-            0x11,
-            0x3,
-            0xf7,
-            0x47,
-            0x34,
-            0x5,
+            0x24, 0xf0, 0x00, 0x10, 0x44, 0xf0, 0x00, 0x12, 0x27, 0x11, 0x3, 0xf7, 0x47, 0x34, 0x5,
             0xf7,
         ];
         let mut usb_midi_parser = UsbMidiParser::new();
@@ -1286,21 +1383,7 @@ mod tests {
     #[test]
     fn parse_ids_of_successive_system_exclusive_messages() {
         let buf: [u8; 16] = [
-            0x24,
-            0xf0,
-            0x00,
-            0x10,
-            0x27,
-            0x11,
-            0x3,
-            0xf7,
-            0x24,
-            0xf0,
-            0x7e,
-            0x42,
-            0x25,
-            0xf7,
-            0x0,
+            0x24, 0xf0, 0x00, 0x10, 0x27, 0x11, 0x3, 0xf7, 0x24, 0xf0, 0x7e, 0x42, 0x25, 0xf7, 0x0,
             0x0,
         ];
         let mut usb_midi_parser = UsbMidiParser::new();
