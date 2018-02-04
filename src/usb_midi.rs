@@ -542,7 +542,7 @@ impl MidiMessage {
             }),
             0xe => MidiMessage::PitchBend(PitchBend {
                 channel: channel,
-                pitch_bend_change: u16::from(input[2] & 0x7F) << 8 | u16::from(input[1] & 0x7F),
+                pitch_bend_change: u16::from(input[2] & 0x7F) << 7 | u16::from(input[1] & 0x7F),
             }),
             _ => unimplemented!(),
         }
@@ -823,7 +823,7 @@ mod tests {
 
     #[test]
     fn parse_returns_pitch_bend_message() {
-        let buf: [u8; 4] = [0x2e, 0xe5, 0x50, 0x40];
+        let buf: [u8; 4] = [0x2e, 0xe5, 0x51, 0x41];
         let mut usb_midi_parser = UsbMidiParser::new();
         let midi_message = usb_midi_parser.parse(&buf);
 
@@ -842,7 +842,7 @@ mod tests {
         };
 
         assert_eq!(5, pitch_bend.channel());
-        assert_eq!(0x4050, pitch_bend.pitch_bend_change());
+        assert_eq!((0x41 << 7) | 0x51, pitch_bend.pitch_bend_change());
     }
 
     #[test]
