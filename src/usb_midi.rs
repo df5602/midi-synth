@@ -971,8 +971,12 @@ impl EventPacket {
         self.cable_number
     }
 
-    pub fn midi_message(&self) -> MidiMessage {
-        self.midi_message.clone()
+    pub fn midi_message(&self) -> &MidiMessage {
+        &self.midi_message
+    }
+
+    pub fn into_midi_message(self) -> MidiMessage {
+        self.midi_message
     }
 
     #[allow(dead_code)]
@@ -1168,7 +1172,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1206,7 +1210,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1244,7 +1248,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1269,7 +1273,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1302,7 +1306,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1340,7 +1344,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1372,7 +1376,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1404,7 +1408,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1437,7 +1441,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1469,7 +1473,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1501,7 +1505,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1533,7 +1537,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1567,7 +1571,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1599,7 +1603,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(6, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1633,7 +1637,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(3, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1667,7 +1671,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1719,7 +1723,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(8, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1754,7 +1758,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(8, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1789,7 +1793,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(8, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1826,7 +1830,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(12, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1878,7 +1882,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(1, packet.cable_number());
                 assert_eq!(12, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1898,7 +1902,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1923,7 +1927,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(8, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1961,7 +1965,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(12, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -1981,7 +1985,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(4, packet.cable_number());
                 assert_eq!(4, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -2009,7 +2013,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(8, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
@@ -2039,7 +2043,7 @@ mod tests {
             (MidiParseStatus::Complete(packet), n) => {
                 assert_eq!(2, packet.cable_number());
                 assert_eq!(8, n);
-                packet.midi_message()
+                packet.into_midi_message()
             }
             _ => panic!("wrong variant"),
         };
