@@ -10,6 +10,14 @@ pub struct NoteOn {
 }
 
 impl NoteOn {
+    pub fn create(channel: u8, note_number: u8, key_velocity: u8) -> MidiMessage {
+        MidiMessage::NoteOn(NoteOn {
+            channel: channel & 0x0F,
+            note_number: note_number & 0x7F,
+            key_velocity: key_velocity & 0x7F,
+        })
+    }
+
     pub fn channel(&self) -> u8 {
         self.channel
     }
@@ -20,6 +28,14 @@ impl NoteOn {
 
     pub fn key_velocity(&self) -> u8 {
         self.key_velocity
+    }
+
+    fn as_bytes(&self, buf: &mut [u8]) {
+        assert!(buf.len() >= 3);
+
+        buf[0] = 0x90 | (self.channel & 0x0F);
+        buf[1] = self.note_number & 0x7F;
+        buf[2] = self.key_velocity & 0x7F;
     }
 }
 
@@ -43,6 +59,14 @@ pub struct NoteOff {
 }
 
 impl NoteOff {
+    pub fn create(channel: u8, note_number: u8, off_velocity: u8) -> MidiMessage {
+        MidiMessage::NoteOff(NoteOff {
+            channel: channel & 0x0F,
+            note_number: note_number & 0x7F,
+            off_velocity: off_velocity & 0x7F,
+        })
+    }
+
     pub fn channel(&self) -> u8 {
         self.channel
     }
@@ -53,6 +77,14 @@ impl NoteOff {
 
     pub fn off_velocity(&self) -> u8 {
         self.off_velocity
+    }
+
+    fn as_bytes(&self, buf: &mut [u8]) {
+        assert!(buf.len() >= 3);
+
+        buf[0] = 0x80 | (self.channel & 0x0F);
+        buf[1] = self.note_number & 0x7F;
+        buf[2] = self.off_velocity & 0x7F;
     }
 }
 
@@ -75,12 +107,27 @@ pub struct PitchBend {
 }
 
 impl PitchBend {
+    pub fn create(channel: u8, pitch_bend_change: u16) -> MidiMessage {
+        MidiMessage::PitchBend(PitchBend {
+            channel: channel & 0x0F,
+            pitch_bend_change: pitch_bend_change & 0x3FFF,
+        })
+    }
+
     pub fn channel(&self) -> u8 {
         self.channel
     }
 
     pub fn pitch_bend_change(&self) -> u16 {
         self.pitch_bend_change
+    }
+
+    fn as_bytes(&self, buf: &mut [u8]) {
+        assert!(buf.len() >= 3);
+
+        buf[0] = 0xE0 | (self.channel & 0x0F);
+        buf[1] = (self.pitch_bend_change & 0x7F) as u8;
+        buf[2] = ((self.pitch_bend_change >> 7) & 0x7F) as u8;
     }
 }
 
@@ -103,6 +150,14 @@ pub struct ControlChange {
 }
 
 impl ControlChange {
+    pub fn create(channel: u8, control_number: u8, control_value: u8) -> MidiMessage {
+        MidiMessage::ControlChange(ControlChange {
+            channel: channel & 0x0F,
+            control_number: control_number & 0x7F,
+            control_value: control_value & 0x7F,
+        })
+    }
+
     pub fn channel(&self) -> u8 {
         self.channel
     }
@@ -113,6 +168,14 @@ impl ControlChange {
 
     pub fn control_value(&self) -> u8 {
         self.control_value
+    }
+
+    fn as_bytes(&self, buf: &mut [u8]) {
+        assert!(buf.len() >= 3);
+
+        buf[0] = 0xB0 | (self.channel & 0x0F);
+        buf[1] = self.control_number & 0x7F;
+        buf[2] = self.control_value & 0x7F;
     }
 }
 
@@ -134,8 +197,22 @@ pub struct AllSoundOff {
 }
 
 impl AllSoundOff {
+    pub fn create(channel: u8) -> MidiMessage {
+        MidiMessage::AllSoundOff(AllSoundOff {
+            channel: channel & 0x0F,
+        })
+    }
+
     pub fn channel(&self) -> u8 {
         self.channel
+    }
+
+    fn as_bytes(&self, buf: &mut [u8]) {
+        assert!(buf.len() >= 3);
+
+        buf[0] = 0xB0 | (self.channel & 0x0F);
+        buf[1] = 120;
+        buf[2] = 0;
     }
 }
 
@@ -155,8 +232,22 @@ pub struct ResetAllControllers {
 }
 
 impl ResetAllControllers {
+    pub fn create(channel: u8) -> MidiMessage {
+        MidiMessage::ResetAllControllers(ResetAllControllers {
+            channel: channel & 0x0F,
+        })
+    }
+
     pub fn channel(&self) -> u8 {
         self.channel
+    }
+
+    fn as_bytes(&self, buf: &mut [u8]) {
+        assert!(buf.len() >= 3);
+
+        buf[0] = 0xB0 | (self.channel & 0x0F);
+        buf[1] = 121;
+        buf[2] = 0;
     }
 }
 
@@ -177,12 +268,27 @@ pub struct LocalControl {
 }
 
 impl LocalControl {
+    pub fn create(channel: u8, on: bool) -> MidiMessage {
+        MidiMessage::LocalControl(LocalControl {
+            channel: channel & 0x0F,
+            on: on,
+        })
+    }
+
     pub fn channel(&self) -> u8 {
         self.channel
     }
 
     pub fn on(&self) -> bool {
         self.on
+    }
+
+    fn as_bytes(&self, buf: &mut [u8]) {
+        assert!(buf.len() >= 3);
+
+        buf[0] = 0xB0 | (self.channel & 0x0F);
+        buf[1] = 122;
+        buf[2] = if self.on { 127 } else { 0 };
     }
 }
 
@@ -203,8 +309,22 @@ pub struct AllNotesOff {
 }
 
 impl AllNotesOff {
+    pub fn create(channel: u8) -> MidiMessage {
+        MidiMessage::AllNotesOff(AllNotesOff {
+            channel: channel & 0x0F,
+        })
+    }
+
     pub fn channel(&self) -> u8 {
         self.channel
+    }
+
+    fn as_bytes(&self, buf: &mut [u8]) {
+        assert!(buf.len() >= 3);
+
+        buf[0] = 0xB0 | (self.channel & 0x0F);
+        buf[1] = 123;
+        buf[2] = 0;
     }
 }
 
@@ -224,8 +344,22 @@ pub struct OmniModeOff {
 }
 
 impl OmniModeOff {
+    pub fn create(channel: u8) -> MidiMessage {
+        MidiMessage::OmniModeOff(OmniModeOff {
+            channel: channel & 0x0F,
+        })
+    }
+
     pub fn channel(&self) -> u8 {
         self.channel
+    }
+
+    fn as_bytes(&self, buf: &mut [u8]) {
+        assert!(buf.len() >= 3);
+
+        buf[0] = 0xB0 | (self.channel & 0x0F);
+        buf[1] = 124;
+        buf[2] = 0;
     }
 }
 
@@ -245,8 +379,22 @@ pub struct OmniModeOn {
 }
 
 impl OmniModeOn {
+    pub fn create(channel: u8) -> MidiMessage {
+        MidiMessage::OmniModeOn(OmniModeOn {
+            channel: channel & 0x0F,
+        })
+    }
+
     pub fn channel(&self) -> u8 {
         self.channel
+    }
+
+    fn as_bytes(&self, buf: &mut [u8]) {
+        assert!(buf.len() >= 3);
+
+        buf[0] = 0xB0 | (self.channel & 0x0F);
+        buf[1] = 125;
+        buf[2] = 0;
     }
 }
 
@@ -263,12 +411,27 @@ pub struct MonoModeOn {
 }
 
 impl MonoModeOn {
+    pub fn create(channel: u8, number_of_channels: u8) -> MidiMessage {
+        MidiMessage::MonoModeOn(MonoModeOn {
+            channel: channel & 0x0F,
+            number_of_channels: number_of_channels & 0x0F,
+        })
+    }
+
     pub fn channel(&self) -> u8 {
         self.channel
     }
 
     pub fn number_of_channels(&self) -> u8 {
         self.number_of_channels
+    }
+
+    fn as_bytes(&self, buf: &mut [u8]) {
+        assert!(buf.len() >= 3);
+
+        buf[0] = 0xB0 | (self.channel & 0x0F);
+        buf[1] = 126;
+        buf[2] = self.number_of_channels & 0x7F;
     }
 }
 
@@ -289,8 +452,22 @@ pub struct PolyModeOn {
 }
 
 impl PolyModeOn {
+    pub fn create(channel: u8) -> MidiMessage {
+        MidiMessage::PolyModeOn(PolyModeOn {
+            channel: channel & 0x0F,
+        })
+    }
+
     pub fn channel(&self) -> u8 {
         self.channel
+    }
+
+    fn as_bytes(&self, buf: &mut [u8]) {
+        assert!(buf.len() >= 3);
+
+        buf[0] = 0xB0 | (self.channel & 0x0F);
+        buf[1] = 127;
+        buf[2] = 0;
     }
 }
 
@@ -307,12 +484,27 @@ pub struct ProgramChange {
 }
 
 impl ProgramChange {
+    pub fn create(channel: u8, program_number: u8) -> MidiMessage {
+        MidiMessage::ProgramChange(ProgramChange {
+            channel: channel & 0x0F,
+            program_number: program_number & 0x7F,
+        })
+    }
+
     pub fn channel(&self) -> u8 {
         self.channel
     }
 
     pub fn program_number(&self) -> u8 {
         self.program_number
+    }
+
+    fn as_bytes(&self, buf: &mut [u8]) {
+        assert!(buf.len() >= 3);
+
+        buf[0] = 0xC0 | (self.channel & 0x0F);
+        buf[1] = self.program_number & 0x7F;
+        buf[2] = 0;
     }
 }
 
@@ -334,12 +526,27 @@ pub struct ChannelPressure {
 }
 
 impl ChannelPressure {
+    pub fn create(channel: u8, pressure: u8) -> MidiMessage {
+        MidiMessage::ChannelPressure(ChannelPressure {
+            channel: channel & 0x0F,
+            pressure: pressure & 0x7F,
+        })
+    }
+
     pub fn channel(&self) -> u8 {
         self.channel
     }
 
     pub fn pressure(&self) -> u8 {
         self.pressure
+    }
+
+    fn as_bytes(&self, buf: &mut [u8]) {
+        assert!(buf.len() >= 3);
+
+        buf[0] = 0xD0 | (self.channel & 0x0F);
+        buf[1] = self.pressure & 0x7F;
+        buf[2] = 0;
     }
 }
 
@@ -362,6 +569,14 @@ pub struct PolyphonicKeyPressure {
 }
 
 impl PolyphonicKeyPressure {
+    pub fn create(channel: u8, note_number: u8, pressure: u8) -> MidiMessage {
+        MidiMessage::PolyphonicKeyPressure(PolyphonicKeyPressure {
+            channel: channel & 0x0F,
+            note_number: note_number & 0x7F,
+            pressure: pressure & 0x7F,
+        })
+    }
+
     pub fn channel(&self) -> u8 {
         self.channel
     }
@@ -372,6 +587,14 @@ impl PolyphonicKeyPressure {
 
     pub fn pressure(&self) -> u8 {
         self.pressure
+    }
+
+    fn as_bytes(&self, buf: &mut [u8]) {
+        assert!(buf.len() >= 3);
+
+        buf[0] = 0xA0 | (self.channel & 0x0F);
+        buf[1] = self.note_number & 0x7F;
+        buf[2] = self.pressure & 0x7F;
     }
 }
 
@@ -409,12 +632,36 @@ pub struct SystemExclusive {
 }
 
 impl SystemExclusive {
+    pub fn create(id: SystemExlusiveId, payload: Vec<u8>) -> MidiMessage {
+        MidiMessage::SystemExclusive(SystemExclusive {
+            id: id,
+            payload: payload,
+        })
+    }
+
     pub fn id(&self) -> SystemExlusiveId {
         self.id.clone()
     }
 
     pub fn payload(&self) -> &Vec<u8> {
         &self.payload
+    }
+
+    fn length(&self) -> usize {
+        let id_length = match self.id {
+            SystemExlusiveId::OneByte(_) => 1,
+            SystemExlusiveId::TwoByte(_, _) => 3,
+        };
+        id_length + self.payload.len() + 2 // SOX + ID + Payload + EOX
+    }
+
+    fn serialize(self) -> SysExSerializer {
+        SysExSerializer {
+            iteration: 0,
+            payload_byte: 0,
+            state: SysExSerializerState::StartOfExclusive,
+            sysex: self,
+        }
     }
 }
 
@@ -426,6 +673,188 @@ impl fmt::Display for SystemExclusive {
             self.id(),
             self.payload().iter().format(" 0x")
         )
+    }
+}
+
+enum SysExSerializerState {
+    StartOfExclusive,
+    Id,
+    Payload,
+    EndOfExclusive,
+    Finished,
+}
+
+struct SysExSerializer {
+    iteration: usize,
+    payload_byte: usize,
+    state: SysExSerializerState,
+    sysex: SystemExclusive,
+}
+
+impl SysExSerializer {
+    fn remaining_length(&self) -> usize {
+        self.sysex.length() - self.iteration
+    }
+}
+
+impl Iterator for SysExSerializer {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = match self.state {
+            SysExSerializerState::StartOfExclusive => {
+                self.state = SysExSerializerState::Id;
+                0xF0
+            }
+            SysExSerializerState::Id => match (&self.sysex.id, self.iteration) {
+                (&SystemExlusiveId::OneByte(a), _) => {
+                    self.state = SysExSerializerState::Payload;
+                    a
+                }
+                (&SystemExlusiveId::TwoByte(_, _), 1) => 0,
+                (&SystemExlusiveId::TwoByte(a, _), 2) => a,
+                (&SystemExlusiveId::TwoByte(_, b), _) => {
+                    self.state = SysExSerializerState::Payload;
+                    b
+                }
+            },
+            SysExSerializerState::Payload => {
+                if self.payload_byte == self.sysex.payload.len() - 1 {
+                    self.state = SysExSerializerState::EndOfExclusive;
+                }
+                let i = self.payload_byte;
+                self.payload_byte += 1;
+                self.sysex.payload[i]
+            }
+            SysExSerializerState::EndOfExclusive => {
+                self.state = SysExSerializerState::Finished;
+                0xF7
+            }
+            SysExSerializerState::Finished => return None,
+        };
+        self.iteration += 1;
+        Some(next)
+    }
+}
+
+pub struct Serializer {
+    midi_message: MidiMessage,
+    sysex: Option<SysExSerializer>,
+    cable_number: u8,
+    iteration: usize,
+    finished: bool,
+    bytes: [u8; 4],
+}
+
+impl Iterator for Serializer {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = match (&mut self.midi_message, self.iteration) {
+            (&mut MidiMessage::NoteOn(ref inner), 0) => {
+                inner.as_bytes(&mut self.bytes[1..]);
+                self.cable_number << 4 | (0x9 & 0x0F)
+            }
+            (&mut MidiMessage::NoteOff(ref inner), 0) => {
+                inner.as_bytes(&mut self.bytes[1..]);
+                self.cable_number << 4 | (0x8 & 0x0F)
+            }
+            (&mut MidiMessage::PitchBend(ref inner), 0) => {
+                inner.as_bytes(&mut self.bytes[1..]);
+                self.cable_number << 4 | (0xE & 0x0F)
+            }
+            (&mut MidiMessage::ControlChange(ref inner), 0) => {
+                inner.as_bytes(&mut self.bytes[1..]);
+                self.cable_number << 4 | (0xB & 0x0F)
+            }
+            (&mut MidiMessage::AllSoundOff(ref inner), 0) => {
+                inner.as_bytes(&mut self.bytes[1..]);
+                self.cable_number << 4 | (0xB & 0x0F)
+            }
+            (&mut MidiMessage::ResetAllControllers(ref inner), 0) => {
+                inner.as_bytes(&mut self.bytes[1..]);
+                self.cable_number << 4 | (0xB & 0x0F)
+            }
+            (&mut MidiMessage::LocalControl(ref inner), 0) => {
+                inner.as_bytes(&mut self.bytes[1..]);
+                self.cable_number << 4 | (0xB & 0x0F)
+            }
+            (&mut MidiMessage::AllNotesOff(ref inner), 0) => {
+                inner.as_bytes(&mut self.bytes[1..]);
+                self.cable_number << 4 | (0xB & 0x0F)
+            }
+            (&mut MidiMessage::OmniModeOff(ref inner), 0) => {
+                inner.as_bytes(&mut self.bytes[1..]);
+                self.cable_number << 4 | (0xB & 0x0F)
+            }
+            (&mut MidiMessage::OmniModeOn(ref inner), 0) => {
+                inner.as_bytes(&mut self.bytes[1..]);
+                self.cable_number << 4 | (0xB & 0x0F)
+            }
+            (&mut MidiMessage::MonoModeOn(ref inner), 0) => {
+                inner.as_bytes(&mut self.bytes[1..]);
+                self.cable_number << 4 | (0xB & 0x0F)
+            }
+            (&mut MidiMessage::PolyModeOn(ref inner), 0) => {
+                inner.as_bytes(&mut self.bytes[1..]);
+                self.cable_number << 4 | (0xB & 0x0F)
+            }
+            (&mut MidiMessage::ProgramChange(ref inner), 0) => {
+                inner.as_bytes(&mut self.bytes[1..]);
+                self.cable_number << 4 | (0xC & 0x0F)
+            }
+            (&mut MidiMessage::ChannelPressure(ref inner), 0) => {
+                inner.as_bytes(&mut self.bytes[1..]);
+                self.cable_number << 4 | (0xD & 0x0F)
+            }
+            (&mut MidiMessage::PolyphonicKeyPressure(ref inner), 0) => {
+                inner.as_bytes(&mut self.bytes[1..]);
+                self.cable_number << 4 | (0xA & 0x0F)
+            }
+            (&mut MidiMessage::SystemExclusive(ref mut inner), n) => {
+                if self.sysex.is_none() {
+                    let sysex = mem::replace(
+                        &mut *inner,
+                        SystemExclusive {
+                            id: SystemExlusiveId::OneByte(1),
+                            payload: vec![],
+                        },
+                    );
+                    self.sysex = Some(sysex.serialize());
+                }
+
+                match self.sysex {
+                    Some(ref mut sysex) => {
+                        if n % 4 == 0 {
+                            let cin = match sysex.remaining_length() {
+                                0 => {
+                                    self.finished = true;
+                                    return None;
+                                }
+                                1 => 0x5,
+                                2 => 0x6,
+                                3 => 0x7,
+                                _ => 0x4,
+                            };
+                            self.cable_number << 4 | (cin & 0x0F)
+                        } else {
+                            match sysex.next() {
+                                Some(byte) => byte,
+                                None => {
+                                    self.finished = true;
+                                    0
+                                }
+                            }
+                        }
+                    }
+                    None => unreachable!(),
+                }
+            }
+            (_, n) if n < 4 => self.bytes[n],
+            (_, _) => return None,
+        };
+        self.iteration += 1;
+        Some(next)
     }
 }
 
@@ -446,7 +875,7 @@ pub enum MidiMessage {
     ProgramChange(ProgramChange),
     ChannelPressure(ChannelPressure),
     PolyphonicKeyPressure(PolyphonicKeyPressure),
-    SystemExlusive(SystemExclusive),
+    SystemExclusive(SystemExclusive),
 }
 
 impl fmt::Display for MidiMessage {
@@ -467,83 +896,64 @@ impl fmt::Display for MidiMessage {
             MidiMessage::ProgramChange(ref inner) => write!(f, "{}", inner),
             MidiMessage::ChannelPressure(ref inner) => write!(f, "{}", inner),
             MidiMessage::PolyphonicKeyPressure(ref inner) => write!(f, "{}", inner),
-            MidiMessage::SystemExlusive(ref inner) => write!(f, "{}", inner),
+            MidiMessage::SystemExclusive(ref inner) => write!(f, "{}", inner),
         }
     }
 }
 
 impl MidiMessage {
+    pub fn serialize(self) -> Serializer {
+        self.serialize_on_cable(0)
+    }
+
+    pub fn serialize_on_cable(self, cable_number: u8) -> Serializer {
+        Serializer {
+            midi_message: self,
+            sysex: None,
+            cable_number: cable_number,
+            iteration: 0,
+            finished: false,
+            bytes: [0; 4],
+        }
+    }
+
     fn from_bytes(input: &[u8]) -> Self {
         assert!(input.len() >= 3);
 
         let message_type = (input[0] & 0xF0) >> 4;
-        let channel = input[0] & 0x0F;
+        let channel = input[0];
 
         match message_type {
-            0x8 => MidiMessage::NoteOff(NoteOff {
-                channel: channel,
-                note_number: input[1] & 0x7F,
-                off_velocity: input[2] & 0x7F,
-            }),
+            0x8 => NoteOff::create(channel, input[1], input[2]),
             0x9 => {
-                let key_velocity = input[2] & 0x7F;
+                let key_velocity = input[2];
                 if key_velocity == 0 {
-                    MidiMessage::NoteOff(NoteOff {
-                        channel: channel,
-                        note_number: input[1] & 0x7F,
-                        off_velocity: 64,
-                    })
+                    NoteOff::create(channel, input[1], 64)
                 } else {
-                    MidiMessage::NoteOn(NoteOn {
-                        channel: channel,
-                        note_number: input[1] & 0x7F,
-                        key_velocity: key_velocity,
-                    })
+                    NoteOn::create(channel, input[1], key_velocity)
                 }
             }
-            0xa => MidiMessage::PolyphonicKeyPressure(PolyphonicKeyPressure {
-                channel: channel,
-                note_number: input[1] & 0x7F,
-                pressure: input[2] & 0x7F,
-            }),
+            0xa => PolyphonicKeyPressure::create(channel, input[1], input[2]),
             0xb => {
                 let control_number = input[1] & 0x7F;
                 match control_number {
-                    120 => MidiMessage::AllSoundOff(AllSoundOff { channel: channel }),
-                    121 => {
-                        MidiMessage::ResetAllControllers(ResetAllControllers { channel: channel })
-                    }
-                    122 => MidiMessage::LocalControl(LocalControl {
-                        channel: channel,
-                        on: input[2] & 0x7F >= 64,
-                    }),
-                    123 => MidiMessage::AllNotesOff(AllNotesOff { channel: channel }),
-                    124 => MidiMessage::OmniModeOff(OmniModeOff { channel: channel }),
-                    125 => MidiMessage::OmniModeOn(OmniModeOn { channel: channel }),
-                    126 => MidiMessage::MonoModeOn(MonoModeOn {
-                        channel: channel,
-                        number_of_channels: input[2] & 0x0F,
-                    }),
-                    127 => MidiMessage::PolyModeOn(PolyModeOn { channel: channel }),
-                    _ => MidiMessage::ControlChange(ControlChange {
-                        channel: channel,
-                        control_number: control_number,
-                        control_value: input[2] & 0x7F,
-                    }),
+                    120 => AllSoundOff::create(channel),
+                    121 => ResetAllControllers::create(channel),
+                    122 => LocalControl::create(channel, (input[2] & 0x7F) >= 64),
+                    123 => AllNotesOff::create(channel),
+                    124 => OmniModeOff::create(channel),
+                    125 => OmniModeOn::create(channel),
+                    126 => MonoModeOn::create(channel, input[2]),
+                    127 => PolyModeOn::create(channel),
+                    _ => ControlChange::create(channel, control_number, input[2]),
                 }
             }
-            0xc => MidiMessage::ProgramChange(ProgramChange {
-                channel: channel,
-                program_number: input[1] & 0x7F,
-            }),
-            0xd => MidiMessage::ChannelPressure(ChannelPressure {
-                channel: channel,
-                pressure: input[1] & 0x7F,
-            }),
-            0xe => MidiMessage::PitchBend(PitchBend {
-                channel: channel,
-                pitch_bend_change: u16::from(input[2] & 0x7F) << 7 | u16::from(input[1] & 0x7F),
-            }),
+            0xc => ProgramChange::create(channel, input[1]),
+            0xd => ChannelPressure::create(channel, input[1]),
+            0xe => PitchBend::create(
+                channel,
+                u16::from(input[2] & 0x7F) << 7 | u16::from(input[1] & 0x7F),
+            ),
             _ => unimplemented!(),
         }
     }
@@ -563,6 +973,11 @@ impl EventPacket {
 
     pub fn midi_message(&self) -> MidiMessage {
         self.midi_message.clone()
+    }
+
+    #[allow(dead_code)]
+    pub fn serialize(self) -> Serializer {
+        self.midi_message.serialize_on_cable(self.cable_number)
     }
 }
 
@@ -706,10 +1121,7 @@ impl UsbMidiParser {
             let result = if self.system_exclusive_started[cable_number as usize] {
                 MidiParseStatus::Complete(EventPacket {
                     cable_number: cable_number,
-                    midi_message: MidiMessage::SystemExlusive(SystemExclusive {
-                        id: id,
-                        payload: payload,
-                    }),
+                    midi_message: SystemExclusive::create(id, payload),
                 })
             } else {
                 MidiParseStatus::MalformedPacket
@@ -769,6 +1181,19 @@ mod tests {
         assert_eq!(4, note_on.channel());
         assert_eq!(0x60, note_on.note_number());
         assert_eq!(0x65, note_on.key_velocity());
+
+        let midi_message = NoteOn::create(
+            note_on.channel(),
+            note_on.note_number(),
+            note_on.key_velocity(),
+        );
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 4);
     }
 
     #[test]
@@ -794,6 +1219,19 @@ mod tests {
         assert_eq!(4, note_off.channel());
         assert_eq!(0x60, note_off.note_number());
         assert_eq!(0x50, note_off.off_velocity());
+
+        let midi_message = NoteOff::create(
+            note_off.channel(),
+            note_off.note_number(),
+            note_off.off_velocity(),
+        );
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 4);
     }
 
     #[test]
@@ -843,6 +1281,15 @@ mod tests {
 
         assert_eq!(5, pitch_bend.channel());
         assert_eq!((0x41 << 7) | 0x51, pitch_bend.pitch_bend_change());
+
+        let midi_message = PitchBend::create(pitch_bend.channel(), pitch_bend.pitch_bend_change());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 4);
     }
 
     #[test]
@@ -868,6 +1315,19 @@ mod tests {
         assert_eq!(3, control_change.channel());
         assert_eq!(1, control_change.control_number());
         assert_eq!(0x50, control_change.control_value());
+
+        let midi_message = ControlChange::create(
+            control_change.channel(),
+            control_change.control_number(),
+            control_change.control_value(),
+        );
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 4);
     }
 
     #[test]
@@ -891,6 +1351,15 @@ mod tests {
         };
 
         assert_eq!(1, all_sound_off.channel());
+
+        let midi_message = AllSoundOff::create(all_sound_off.channel());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 4);
     }
 
     #[test]
@@ -914,6 +1383,15 @@ mod tests {
         };
 
         assert_eq!(1, reset_all_controllers.channel());
+
+        let midi_message = ResetAllControllers::create(reset_all_controllers.channel());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 4);
     }
 
     #[test]
@@ -938,6 +1416,15 @@ mod tests {
 
         assert_eq!(1, local_control.channel());
         assert_eq!(true, local_control.on());
+
+        let midi_message = LocalControl::create(local_control.channel(), local_control.on());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 4);
     }
 
     #[test]
@@ -961,6 +1448,15 @@ mod tests {
         };
 
         assert_eq!(1, all_notes_off.channel());
+
+        let midi_message = AllNotesOff::create(all_notes_off.channel());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 4);
     }
 
     #[test]
@@ -984,6 +1480,15 @@ mod tests {
         };
 
         assert_eq!(1, omni_mode_off.channel());
+
+        let midi_message = OmniModeOff::create(omni_mode_off.channel());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 4);
     }
 
     #[test]
@@ -1007,6 +1512,15 @@ mod tests {
         };
 
         assert_eq!(1, omni_mode_on.channel());
+
+        let midi_message = OmniModeOn::create(omni_mode_on.channel());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 4);
     }
 
     #[test]
@@ -1031,6 +1545,16 @@ mod tests {
 
         assert_eq!(1, mono_mode_on.channel());
         assert_eq!(8, mono_mode_on.number_of_channels());
+
+        let midi_message =
+            MonoModeOn::create(mono_mode_on.channel(), mono_mode_on.number_of_channels());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 4);
     }
 
     #[test]
@@ -1054,6 +1578,15 @@ mod tests {
         };
 
         assert_eq!(1, poly_mode_on.channel());
+
+        let midi_message = PolyModeOn::create(poly_mode_on.channel());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 4);
     }
 
     #[test]
@@ -1078,6 +1611,16 @@ mod tests {
 
         assert_eq!(5, program_change.channel());
         assert_eq!(4, program_change.program_number());
+
+        let midi_message =
+            ProgramChange::create(program_change.channel(), program_change.program_number());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(6).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 4);
     }
 
     #[test]
@@ -1102,6 +1645,16 @@ mod tests {
 
         assert_eq!(2, channel_pressure.channel());
         assert_eq!(0x20, channel_pressure.pressure());
+
+        let midi_message =
+            ChannelPressure::create(channel_pressure.channel(), channel_pressure.pressure());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(3).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 4);
     }
 
     #[test]
@@ -1127,6 +1680,19 @@ mod tests {
         assert_eq!(5, poly_key_press.channel());
         assert_eq!(0x12, poly_key_press.note_number());
         assert_eq!(0x13, poly_key_press.pressure());
+
+        let midi_message = PolyphonicKeyPressure::create(
+            poly_key_press.channel(),
+            poly_key_press.note_number(),
+            poly_key_press.pressure(),
+        );
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 4);
     }
 
     #[test]
@@ -1159,13 +1725,23 @@ mod tests {
         };
 
         let system_exclusive = match midi_message {
-            MidiMessage::SystemExlusive(system_exclusive) => system_exclusive,
+            MidiMessage::SystemExclusive(system_exclusive) => system_exclusive,
             _ => panic!("wrong variant"),
         };
 
         let expected: Vec<u8> = vec![0x1];
         assert_eq!(expected, *system_exclusive.payload());
         assert_eq!(SystemExlusiveId::OneByte(0x7e), system_exclusive.id());
+
+        let midi_message =
+            SystemExclusive::create(system_exclusive.id(), system_exclusive.payload().clone());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, buf.len());
     }
 
     #[test]
@@ -1184,13 +1760,23 @@ mod tests {
         };
 
         let system_exclusive = match midi_message {
-            MidiMessage::SystemExlusive(system_exclusive) => system_exclusive,
+            MidiMessage::SystemExclusive(system_exclusive) => system_exclusive,
             _ => panic!("wrong variant"),
         };
 
         let expected: Vec<u8> = vec![0x1, 0x2];
         assert_eq!(expected, *system_exclusive.payload());
         assert_eq!(SystemExlusiveId::OneByte(0x7e), system_exclusive.id());
+
+        let midi_message =
+            SystemExclusive::create(system_exclusive.id(), system_exclusive.payload().clone());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, buf.len());
     }
 
     #[test]
@@ -1209,13 +1795,23 @@ mod tests {
         };
 
         let system_exclusive = match midi_message {
-            MidiMessage::SystemExlusive(system_exclusive) => system_exclusive,
+            MidiMessage::SystemExclusive(system_exclusive) => system_exclusive,
             _ => panic!("wrong variant"),
         };
 
         let expected: Vec<u8> = vec![0x1, 0x2, 0x3];
         assert_eq!(expected, *system_exclusive.payload());
         assert_eq!(SystemExlusiveId::OneByte(0x7e), system_exclusive.id());
+
+        let midi_message =
+            SystemExclusive::create(system_exclusive.id(), system_exclusive.payload().clone());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, buf.len());
     }
 
     #[test]
@@ -1236,13 +1832,23 @@ mod tests {
         };
 
         let system_exclusive = match midi_message {
-            MidiMessage::SystemExlusive(system_exclusive) => system_exclusive,
+            MidiMessage::SystemExclusive(system_exclusive) => system_exclusive,
             _ => panic!("wrong variant"),
         };
 
         let expected: Vec<u8> = vec![0x1, 0x2, 0x3, 0x4];
         assert_eq!(expected, *system_exclusive.payload());
         assert_eq!(SystemExlusiveId::OneByte(0x7e), system_exclusive.id());
+
+        let midi_message =
+            SystemExclusive::create(system_exclusive.id(), system_exclusive.payload().clone());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, buf.len());
     }
 
     #[test]
@@ -1278,7 +1884,7 @@ mod tests {
         };
 
         let system_exclusive = match midi_message {
-            MidiMessage::SystemExlusive(system_exclusive) => system_exclusive,
+            MidiMessage::SystemExclusive(system_exclusive) => system_exclusive,
             _ => panic!("wrong variant"),
         };
 
@@ -1298,7 +1904,7 @@ mod tests {
         };
 
         let system_exclusive = match midi_message {
-            MidiMessage::SystemExlusive(system_exclusive) => system_exclusive,
+            MidiMessage::SystemExclusive(system_exclusive) => system_exclusive,
             _ => panic!("wrong variant"),
         };
 
@@ -1323,13 +1929,23 @@ mod tests {
         };
 
         let system_exclusive = match midi_message {
-            MidiMessage::SystemExlusive(system_exclusive) => system_exclusive,
+            MidiMessage::SystemExclusive(system_exclusive) => system_exclusive,
             _ => panic!("wrong variant"),
         };
 
         let expected: Vec<u8> = vec![0x3];
         assert_eq!(expected, *system_exclusive.payload());
         assert_eq!(SystemExlusiveId::TwoByte(0x10, 0x11), system_exclusive.id());
+
+        let midi_message =
+            SystemExclusive::create(system_exclusive.id(), system_exclusive.payload().clone());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, buf.len());
     }
 
     #[test]
@@ -1351,7 +1967,7 @@ mod tests {
         };
 
         let system_exclusive = match midi_message {
-            MidiMessage::SystemExlusive(system_exclusive) => system_exclusive,
+            MidiMessage::SystemExclusive(system_exclusive) => system_exclusive,
             _ => panic!("wrong variant"),
         };
 
@@ -1371,7 +1987,7 @@ mod tests {
         };
 
         let system_exclusive = match midi_message {
-            MidiMessage::SystemExlusive(system_exclusive) => system_exclusive,
+            MidiMessage::SystemExclusive(system_exclusive) => system_exclusive,
             _ => panic!("wrong variant"),
         };
 
@@ -1399,13 +2015,23 @@ mod tests {
         };
 
         let system_exclusive = match midi_message {
-            MidiMessage::SystemExlusive(system_exclusive) => system_exclusive,
+            MidiMessage::SystemExclusive(system_exclusive) => system_exclusive,
             _ => panic!("wrong variant"),
         };
 
         let expected: Vec<u8> = vec![0x3];
         assert_eq!(expected, *system_exclusive.payload());
         assert_eq!(SystemExlusiveId::TwoByte(0x10, 0x11), system_exclusive.id());
+
+        let midi_message =
+            SystemExclusive::create(system_exclusive.id(), system_exclusive.payload().clone());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf.into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 8);
 
         let midi_message = usb_midi_parser.parse(&buf[8..]);
 
@@ -1419,13 +2045,23 @@ mod tests {
         };
 
         let system_exclusive = match midi_message {
-            MidiMessage::SystemExlusive(system_exclusive) => system_exclusive,
+            MidiMessage::SystemExclusive(system_exclusive) => system_exclusive,
             _ => panic!("wrong variant"),
         };
 
         let expected: Vec<u8> = vec![0x42];
         assert_eq!(expected, *system_exclusive.payload());
         assert_eq!(SystemExlusiveId::OneByte(0x7e), system_exclusive.id());
+
+        let midi_message =
+            SystemExclusive::create(system_exclusive.id(), system_exclusive.payload().clone());
+
+        let mut i = 0;
+        for (a, &b) in midi_message.serialize_on_cable(2).zip(buf[8..].into_iter()) {
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, 8);
     }
 
     #[test]
