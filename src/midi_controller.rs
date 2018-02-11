@@ -1,12 +1,13 @@
 use std::time::Duration;
+use std::sync::mpsc::Sender;
 
 use libusb;
 use itertools::Itertools;
 
 use errors::*;
-use errors::ErrorKind::MidiControllerNotConnected;
+use errors::ErrorKind::{MidiControllerNotConnected, MidiOperationNotSupported};
 
-use usb_midi::{MidiParseStatus, UsbMidiParser};
+use usb_midi::{MidiMessage, MidiParseStatus, SystemExclusive, SystemExlusiveId, UsbMidiParser};
 
 /// Utility function to discover all endpoints of a USB device.
 #[allow(dead_code)]
@@ -72,22 +73,36 @@ fn open_device(
     Ok(handle)
 }
 
-pub trait UsbMidiController {
-    fn listen(&self) -> Result<()> {
+pub trait UsbMidiDevice {
+    fn read_bulk(&self, buf: &mut [u8], timeout: Duration) -> Result<usize>;
+    fn write_bulk(&self, buf: &[u8], timeout: Duration) -> Result<usize>;
+}
+
+pub struct UsbMidiController<T: UsbMidiDevice> {
+    device: T,
+}
+
+impl<T: UsbMidiDevice> UsbMidiController<T> {
+    pub fn new(device: T) -> UsbMidiController<T> {
+        UsbMidiController { device: device }
+    }
+
+    pub fn listen(&self, tx: &Sender<MidiMessage>) -> Result<()> {
         let mut buf: [u8; 256] = [0; 256];
         let mut usb_midi_parser = UsbMidiParser::new();
 
         let mut begin = 0;
         let mut end = 0;
         loop {
-            let read = self.read_bulk(&mut buf[end..], Duration::from_secs(60))
+            let read = self.device
+                .read_bulk(&mut buf[end..], Duration::from_secs(60))
                 .chain_err(|| "Failed to read from USB device")?;
             end += read;
 
             while begin < end {
                 match usb_midi_parser.parse(&buf[begin..end]) {
                     (MidiParseStatus::Complete(packet), n) => {
-                        println!("{}", packet.midi_message());
+                        tx.send(packet.into_midi_message())?;
                         begin += n;
                     }
                     (MidiParseStatus::Incomplete, n) => {
@@ -118,7 +133,28 @@ pub trait UsbMidiController {
         }
     }
 
-    fn read_bulk(&self, buf: &mut [u8], timeout: Duration) -> Result<usize>;
+    pub fn send_message(&self, msg: MidiMessage) -> Result<usize> {
+        let mut buf = [0u8; 32];
+
+        let mut sent = 0;
+
+        let mut i = 0;
+        for byte in msg.serialize() {
+            buf[i] = byte;
+            i += 1;
+
+            if i == buf.len() {
+                sent += self.device.write_bulk(&buf, Duration::from_secs(5))?;
+                i = 0;
+            }
+        }
+
+        if i > 0 {
+            sent += self.device.write_bulk(&buf[..i], Duration::from_secs(5))?;
+        }
+
+        Ok(sent)
+    }
 }
 
 pub struct MAudioKeystation49e<'ctx> {
@@ -134,9 +170,13 @@ impl<'ctx> MAudioKeystation49e<'ctx> {
     }
 }
 
-impl<'ctx> UsbMidiController for MAudioKeystation49e<'ctx> {
+impl<'ctx> UsbMidiDevice for MAudioKeystation49e<'ctx> {
     fn read_bulk(&self, buf: &mut [u8], timeout: Duration) -> Result<usize> {
         Ok(self.device_handle.read_bulk(129, buf, timeout)?)
+    }
+
+    fn write_bulk(&self, _buf: &[u8], _timeout: Duration) -> Result<usize> {
+        Err(MidiOperationNotSupported.into())
     }
 }
 
@@ -149,10 +189,15 @@ impl<'ctx> AkaiAPC40MkII<'ctx> {
         let handle =
             open_device(context, 0x9e8, 0x29, 1).chain_err(|| "Failed to open Akai APC40 MkII")?;
 
-        let buf = [
-            0x04, 0xF0, 0x47, 0x7F, 0x04, 0x29, 0x60, 0x00, 0x04, 0x04, 0x42, 0x00, 0x07, 0x00,
-            0x00, 0xF7,
-        ];
+        let init_message = SystemExclusive::create(
+            SystemExlusiveId::OneByte(0x47),
+            vec![0x7F, 0x29, 0x60, 0x00, 0x04, 0x42, 0x00, 0x00, 0x00],
+        );
+
+        let mut buf = [0u8; 16];
+        for (i, byte) in init_message.serialize().enumerate() {
+            buf[i] = byte;
+        }
         handle.write_bulk(1, &buf, Duration::from_secs(5))?;
 
         Ok(Self {
@@ -161,8 +206,39 @@ impl<'ctx> AkaiAPC40MkII<'ctx> {
     }
 }
 
-impl<'ctx> UsbMidiController for AkaiAPC40MkII<'ctx> {
+impl<'ctx> UsbMidiDevice for AkaiAPC40MkII<'ctx> {
     fn read_bulk(&self, buf: &mut [u8], timeout: Duration) -> Result<usize> {
         Ok(self.device_handle.read_bulk(130, buf, timeout)?)
+    }
+
+    fn write_bulk(&self, buf: &[u8], timeout: Duration) -> Result<usize> {
+        Ok(self.device_handle.write_bulk(1, buf, timeout)?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn initialization_message() {
+        let init_message = SystemExclusive::create(
+            SystemExlusiveId::OneByte(0x47),
+            vec![0x7F, 0x29, 0x60, 0x00, 0x04, 0x42, 0x00, 0x00, 0x00],
+        );
+
+        let buf = [
+            0x04, 0xF0, 0x47, 0x7F, 0x04, 0x29, 0x60, 0x00, 0x04, 0x04, 0x42, 0x00, 0x07, 0x00,
+            0x00, 0xF7,
+        ];
+
+        let mut i = 0;
+        println!("");
+        for (a, &b) in init_message.serialize().zip(buf.into_iter()) {
+            println!("Is: 0x{:02x}, should be: 0x{:02x}", a, b);
+            assert_eq!(a, b);
+            i += 1;
+        }
+        assert_eq!(i, buf.len());
     }
 }

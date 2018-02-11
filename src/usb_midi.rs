@@ -971,6 +971,7 @@ impl EventPacket {
         self.cable_number
     }
 
+    #[allow(dead_code)]
     pub fn midi_message(&self) -> &MidiMessage {
         &self.midi_message
     }
