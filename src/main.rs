@@ -1,5 +1,6 @@
 extern crate itertools;
 extern crate libusb;
+extern crate portaudio;
 
 #[macro_use]
 extern crate error_chain;
@@ -19,6 +20,7 @@ use std::thread;
 use midi_controller::{AkaiAPC40MkII, MAudioKeystation49e, UsbMidiController};
 
 use synth::dispatcher::Dispatcher;
+use synth::audio_driver::AudioDriver;
 
 use errors::*;
 use error_chain::ChainedError;
@@ -36,6 +38,7 @@ fn run() -> Result<()> {
     let (keyboard2host_tx, keyboard2host_rx) = mpsc::channel();
     let (controls2host_tx, controls2host_rx) = mpsc::channel();
     let (host2controls_tx, host2controls_rx) = mpsc::channel();
+    let (synth_ctrl_tx, synth_ctrl_rx) = mpsc::channel();
 
     let keyboard = false;
 
@@ -48,6 +51,10 @@ fn run() -> Result<()> {
         None
     };
     let apc40 = Arc::new(UsbMidiController::new(AkaiAPC40MkII::open(&USB_CONTEXT)?));
+
+    // Setup Portaudio
+    let mut audio = AudioDriver::new()?;
+    audio.start(synth_ctrl_rx)?;
 
     // Setup threads that listen to MIDI events from the controllers
     if keystation.is_some() {
@@ -73,7 +80,12 @@ fn run() -> Result<()> {
     threads.push(controls_tx_thread);
 
     // Create dispatcher
-    let mut dispatcher = Dispatcher::new(keyboard2host_rx, controls2host_rx, host2controls_tx);
+    let mut dispatcher = Dispatcher::new(
+        keyboard2host_rx,
+        controls2host_rx,
+        host2controls_tx,
+        synth_ctrl_tx,
+    );
     let dispatcher_thread = thread::spawn(move || dispatcher.start());
     threads.push(dispatcher_thread);
 
