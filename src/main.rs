@@ -10,12 +10,15 @@ extern crate lazy_static;
 mod errors;
 mod midi_controller;
 mod usb_midi;
+mod synth;
 
 use std::sync::mpsc;
+use std::sync::Arc;
 use std::thread;
 
 use midi_controller::{AkaiAPC40MkII, MAudioKeystation49e, UsbMidiController};
-use usb_midi::MidiMessage;
+
+use synth::dispatcher::Dispatcher;
 
 use errors::*;
 use error_chain::ChainedError;
@@ -28,27 +31,57 @@ lazy_static! {
 }
 
 fn run() -> Result<()> {
-    let (tx, rx) = mpsc::channel();
+    let mut threads = vec![];
 
-    let keystation = UsbMidiController::new(MAudioKeystation49e::open(&USB_CONTEXT)?);
-    let keyboard_thread = thread::spawn(move || keystation.listen(&tx));
+    let (keyboard2host_tx, keyboard2host_rx) = mpsc::channel();
+    let (controls2host_tx, controls2host_rx) = mpsc::channel();
+    let (host2controls_tx, host2controls_rx) = mpsc::channel();
 
-    let apc40 = UsbMidiController::new(AkaiAPC40MkII::open(&USB_CONTEXT)?);
+    let keyboard = false;
 
-    while let Ok(midi_message) = rx.recv() {
-        let midi_message = match midi_message {
-            note_on @ MidiMessage::NoteOn(_) => note_on,
-            note_off @ MidiMessage::NoteOff(_) => note_off,
-            _ => continue,
-        };
+    // Setup MIDI controllers
+    let keystation = if keyboard {
+        Some(UsbMidiController::new(MAudioKeystation49e::open(
+            &USB_CONTEXT,
+        )?))
+    } else {
+        None
+    };
+    let apc40 = Arc::new(UsbMidiController::new(AkaiAPC40MkII::open(&USB_CONTEXT)?));
 
-        apc40.send_message(midi_message)?;
+    // Setup threads that listen to MIDI events from the controllers
+    if keystation.is_some() {
+        let keystation = keystation.unwrap();
+        let keyboard_thread = thread::spawn(move || keystation.listen(&keyboard2host_tx));
+        threads.push(keyboard_thread);
     }
 
-    let res = keyboard_thread.join();
-    match res {
-        Ok(res) => res?,
-        Err(e) => println!("{:?}", e),
+    let apc40_cloned = apc40.clone();
+    let controls_rx_thread = thread::spawn(move || apc40_cloned.listen(&controls2host_tx));
+    threads.push(controls_rx_thread);
+
+    // Setup thread that transmits MIDI events to APC controller
+    let controls_tx_thread = thread::spawn(move || {
+        while let Ok(midi_message) = host2controls_rx.recv() {
+            match apc40.send_message(midi_message) {
+                Ok(_) => {}
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(())
+    });
+    threads.push(controls_tx_thread);
+
+    // Create dispatcher
+    let mut dispatcher = Dispatcher::new(keyboard2host_rx, controls2host_rx, host2controls_tx);
+    let dispatcher_thread = thread::spawn(move || dispatcher.start());
+    threads.push(dispatcher_thread);
+
+    for thread in threads {
+        match thread.join() {
+            Ok(res) => res?,
+            Err(e) => eprintln!("{:?}", e),
+        }
     }
 
     Ok(())
