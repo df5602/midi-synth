@@ -215,30 +215,3 @@ impl<'ctx> UsbMidiDevice for AkaiAPC40MkII<'ctx> {
         Ok(self.device_handle.write_bulk(1, buf, timeout)?)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn initialization_message() {
-        let init_message = SystemExclusive::create(
-            SystemExlusiveId::OneByte(0x47),
-            vec![0x7F, 0x29, 0x60, 0x00, 0x04, 0x42, 0x00, 0x00, 0x00],
-        );
-
-        let buf = [
-            0x04, 0xF0, 0x47, 0x7F, 0x04, 0x29, 0x60, 0x00, 0x04, 0x04, 0x42, 0x00, 0x07, 0x00,
-            0x00, 0xF7,
-        ];
-
-        let mut i = 0;
-        println!("");
-        for (a, &b) in init_message.serialize().zip(buf.into_iter()) {
-            println!("Is: 0x{:02x}, should be: 0x{:02x}", a, b);
-            assert_eq!(a, b);
-            i += 1;
-        }
-        assert_eq!(i, buf.len());
-    }
-}
