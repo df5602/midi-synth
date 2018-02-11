@@ -21,6 +21,7 @@ use midi_controller::{AkaiAPC40MkII, MAudioKeystation49e, UsbMidiController};
 
 use synth::dispatcher::Dispatcher;
 use synth::audio_driver::AudioDriver;
+use synth::synthesizer::Synthesizer;
 
 use errors::*;
 use error_chain::ChainedError;
@@ -52,9 +53,12 @@ fn run() -> Result<()> {
     };
     let apc40 = Arc::new(UsbMidiController::new(AkaiAPC40MkII::open(&USB_CONTEXT)?));
 
+    // Create Synthesizer
+    let synthesizer = Synthesizer::new(synth_ctrl_rx);
+
     // Setup Portaudio
     let mut audio = AudioDriver::new()?;
-    audio.start(synth_ctrl_rx)?;
+    audio.start(synthesizer)?;
 
     // Setup threads that listen to MIDI events from the controllers
     if keystation.is_some() {

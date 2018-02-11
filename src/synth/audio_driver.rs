@@ -1,7 +1,7 @@
-use std::sync::mpsc::Receiver;
-
 use portaudio;
 use portaudio::{OutputStreamCallbackArgs, PortAudio, Stream};
+
+use synth::synthesizer::Synthesizer;
 
 use errors::Result;
 
@@ -24,7 +24,7 @@ impl AudioDriver {
         })
     }
 
-    pub fn start(&mut self, freq_in: Receiver<f32>) -> Result<()> {
+    pub fn start(&mut self, mut synthesizer: Synthesizer) -> Result<()> {
         let mut settings = self.portaudio.default_output_stream_settings(
             CHANNELS,
             SAMPLE_RATE,
@@ -32,38 +32,17 @@ impl AudioDriver {
         )?;
         settings.flags = portaudio::stream_flags::CLIP_OFF;
 
-        let mut output_value = 0.0;
-        let mut output_direction = 1.0;
-        let mut freq = 0.04; // approx. 440 Hz
-
         let mut stream = self.portaudio.open_non_blocking_stream(
             settings,
             move |OutputStreamCallbackArgs { buffer, frames, .. }| {
                 let mut idx = 0;
 
-                if let Ok(f) = freq_in.try_recv() {
-                    freq = f;
-                };
-
                 for _ in 0..frames {
+                    let output_value = synthesizer.next().unwrap();
+
                     buffer[idx] = output_value;
                     buffer[idx + 1] = output_value;
 
-                    output_value += freq * output_direction;
-                    if output_value >= 1.0 || output_value <= -1.0 {
-                        output_direction *= -1.0;
-                        let diff = if output_value >= 1.0 {
-                            output_value - 1.0
-                        } else {
-                            -1.0 - output_value
-                        };
-                        output_value += 2.0 * diff * output_direction;
-                        assert!(
-                            output_value < 1.0 && output_value > -1.0,
-                            "{}",
-                            output_value,
-                        );
-                    }
                     idx += 2;
                 }
                 portaudio::Continue
