@@ -24,6 +24,7 @@ use synth::audio_driver::AudioDriver;
 use synth::synthesizer::Synthesizer;
 
 use errors::*;
+use errors::ErrorKind::MidiControllerNotConnected;
 use error_chain::ChainedError;
 
 lazy_static! {
@@ -41,16 +42,15 @@ fn run() -> Result<()> {
     let (host2controls_tx, host2controls_rx) = mpsc::channel();
     let (synth_ctrl_tx, synth_ctrl_rx) = mpsc::channel();
 
-    let keyboard = false;
-
     // Setup MIDI controllers
-    let keystation = if keyboard {
-        Some(UsbMidiController::new(MAudioKeystation49e::open(
-            &USB_CONTEXT,
-        )?))
-    } else {
-        None
+    let keystation = match MAudioKeystation49e::open(&USB_CONTEXT) {
+        Ok(keystation) => Some(UsbMidiController::new(keystation)),
+        Err(e) => match *e.kind() {
+            MidiControllerNotConnected => None,
+            _ => return Err(e),
+        },
     };
+
     let apc40 = Arc::new(UsbMidiController::new(AkaiAPC40MkII::open(&USB_CONTEXT)?));
 
     // Create Synthesizer
@@ -61,8 +61,7 @@ fn run() -> Result<()> {
     audio.start(synthesizer)?;
 
     // Setup threads that listen to MIDI events from the controllers
-    if keystation.is_some() {
-        let keystation = keystation.unwrap();
+    if let Some(keystation) = keystation {
         let keyboard_thread = thread::spawn(move || keystation.listen(&keyboard2host_tx));
         threads.push(keyboard_thread);
     }
