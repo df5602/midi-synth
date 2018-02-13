@@ -24,7 +24,7 @@ use synth::audio_driver::AudioDriver;
 use synth::synthesizer::Synthesizer;
 
 use errors::*;
-use errors::ErrorKind::MidiControllerNotConnected;
+use errors::ErrorKind::*;
 use error_chain::ChainedError;
 
 lazy_static! {
@@ -46,12 +46,16 @@ fn run() -> Result<()> {
     let keystation = match MAudioKeystation49e::open(&USB_CONTEXT) {
         Ok(keystation) => Some(UsbMidiController::new(keystation)),
         Err(e) => match *e.kind() {
-            MidiControllerNotConnected => None,
-            _ => return Err(e),
+            MidiControllerNotConnected => {
+                println!("Keyboard not connected, continue in continuous mode...");
+                None
+            }
+            _ => return Err(e).chain_err(|| "Could not open M-Audio Keystation 49e"),
         },
     };
 
-    let apc40 = Arc::new(UsbMidiController::new(AkaiAPC40MkII::open(&USB_CONTEXT)?));
+    let apc40 = Arc::new(UsbMidiController::new(AkaiAPC40MkII::open(&USB_CONTEXT)
+        .chain_err(|| "Could not open Akai APC40 MkII")?));
 
     // Create Synthesizer
     let synthesizer = Synthesizer::new(synth_ctrl_rx);

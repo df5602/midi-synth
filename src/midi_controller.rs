@@ -164,8 +164,7 @@ pub struct MAudioKeystation49e<'ctx> {
 impl<'ctx> MAudioKeystation49e<'ctx> {
     pub fn open(context: &'ctx libusb::Context) -> Result<Self> {
         Ok(Self {
-            device_handle: open_device(context, 0xa4d, 0x90, 1)
-                .chain_err(|| "Failed to open M-Audio Keystation 49e")?,
+            device_handle: open_device(context, 0xa4d, 0x90, 1)?,
         })
     }
 }
@@ -186,8 +185,7 @@ pub struct AkaiAPC40MkII<'ctx> {
 
 impl<'ctx> AkaiAPC40MkII<'ctx> {
     pub fn open(context: &'ctx libusb::Context) -> Result<Self> {
-        let handle =
-            open_device(context, 0x9e8, 0x29, 1).chain_err(|| "Failed to open Akai APC40 MkII")?;
+        let handle = open_device(context, 0x9e8, 0x29, 1)?;
 
         let init_message = SystemExclusive::create(
             SystemExlusiveId::OneByte(0x47),
