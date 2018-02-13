@@ -34,18 +34,20 @@ impl Dispatcher {
         let message = ControlChange::create(0, 0x30, 72);
         self.controls_tx.send(message)?;
 
+        self.synth_ctrl_tx.send(0.01)?;
+
         // Receive MIDI events from controller
         while let Ok(midi_message) = self.controls_rx.recv() {
             match midi_message {
                 MidiMessage::ControlChange(control_change) => {
                     if control_change.control_number() == 0x30 {
                         let (value, f) = match control_change.control_value() {
-                            0...21 => (21, 0.005),
-                            val @ 35...38 => (val, 0.01),
-                            val @ 53...56 => (val, 0.02),
-                            val @ 70...73 => (val, 0.04),
-                            val @ 88...91 => (val, 0.08),
-                            105...127 => (105, 0.16),
+                            0...21 => (21, 0.00125),
+                            val @ 35...38 => (val, 0.0025),
+                            val @ 53...56 => (val, 0.005),
+                            val @ 70...73 => (val, 0.01),
+                            val @ 88...91 => (val, 0.02),
+                            105...127 => (105, 0.04),
                             _ => continue,
                         };
 
