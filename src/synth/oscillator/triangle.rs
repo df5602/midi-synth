@@ -1,3 +1,5 @@
+use synth::sample_stream::SampleStream;
+
 pub struct Triangle {
     base_frequency: f32,
     sample_counter: f32,
@@ -20,10 +22,10 @@ impl Triangle {
     }
 }
 
-impl Iterator for Triangle {
-    type Item = f32;
+impl SampleStream for Triangle {
+    type Sample = f32;
 
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next_sample(&mut self) -> Self::Sample {
         // Calculate phase angle
         // (Do it this seemingly more complicated than necessary way, since this seems to minimize
         // floating point errors)
@@ -46,9 +48,11 @@ impl Iterator for Triangle {
 
         assert!(output_value <= 1.0 && output_value >= -1.0);
 
-        Some(output_value)
+        output_value
     }
 }
+
+iterator!(Triangle);
 
 #[cfg(test)]
 mod tests {

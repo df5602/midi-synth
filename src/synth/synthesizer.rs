@@ -1,6 +1,7 @@
 use std::sync::mpsc::Receiver;
 
 use synth::oscillator::Oscillator;
+use synth::sample_stream::SampleStream;
 
 pub struct Synthesizer {
     osc1: Oscillator,
@@ -16,14 +17,16 @@ impl Synthesizer {
     }
 }
 
-impl Iterator for Synthesizer {
-    type Item = f32;
+impl SampleStream for Synthesizer {
+    type Sample = f32;
 
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next_sample(&mut self) -> Self::Sample {
         if let Ok(f) = self.freq_in.try_recv() {
             self.osc1.set_base_frequency(f);
         }
 
-        self.osc1.next()
+        self.osc1.next_sample()
     }
 }
+
+iterator!(Synthesizer);

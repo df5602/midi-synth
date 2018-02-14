@@ -1,6 +1,7 @@
 mod triangle;
 
-use self::triangle::Triangle;
+use synth::oscillator::triangle::Triangle;
+use synth::sample_stream::SampleStream;
 
 pub struct Oscillator {
     triangle: Triangle,
@@ -18,10 +19,12 @@ impl Oscillator {
     }
 }
 
-impl Iterator for Oscillator {
-    type Item = f32;
+impl SampleStream for Oscillator {
+    type Sample = f32;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        self.triangle.next()
+    fn next_sample(&mut self) -> Self::Sample {
+        self.triangle.next_sample()
     }
 }
+
+iterator!(Oscillator);

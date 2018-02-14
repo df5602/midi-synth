@@ -2,6 +2,7 @@ use portaudio;
 use portaudio::{OutputStreamCallbackArgs, PortAudio, Stream};
 
 use synth::synthesizer::Synthesizer;
+use synth::sample_stream::SampleStream;
 
 use errors::Result;
 
@@ -38,7 +39,7 @@ impl AudioDriver {
                 let mut idx = 0;
 
                 for _ in 0..frames {
-                    let output_value = synthesizer.next().unwrap();
+                    let output_value = synthesizer.next_sample();
 
                     buffer[idx] = output_value;
                     buffer[idx + 1] = output_value;
