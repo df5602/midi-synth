@@ -17,7 +17,7 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
 
-use midi_controller::{AkaiAPC40MkII, MAudioKeystation49e, UsbMidiController};
+use midi_controller::{AkaiAPC40MkII, MAudioKeystation49e, MidiControllerType, UsbMidiController};
 
 use synth::dispatcher::Dispatcher;
 use synth::audio_driver::AudioDriver;
@@ -37,8 +37,7 @@ lazy_static! {
 fn run() -> Result<()> {
     let mut threads = vec![];
 
-    let (keyboard2host_tx, keyboard2host_rx) = mpsc::channel();
-    let (controls2host_tx, controls2host_rx) = mpsc::channel();
+    let (device2host_tx, device2host_rx) = mpsc::channel();
     let (host2controls_tx, host2controls_rx) = mpsc::channel();
     let (synth_ctrl_tx, synth_ctrl_rx) = mpsc::channel();
 
@@ -66,12 +65,16 @@ fn run() -> Result<()> {
 
     // Setup threads that listen to MIDI events from the controllers
     if let Some(keystation) = keystation {
-        let keyboard_thread = thread::spawn(move || keystation.listen(&keyboard2host_tx));
+        let keyboard_tx = device2host_tx.clone();
+        let keyboard_thread =
+            thread::spawn(move || keystation.listen(&keyboard_tx, MidiControllerType::Keyboard));
         threads.push(keyboard_thread);
     }
 
     let apc40_cloned = apc40.clone();
-    let controls_rx_thread = thread::spawn(move || apc40_cloned.listen(&controls2host_tx));
+    let controls_rx_thread = thread::spawn(move || {
+        apc40_cloned.listen(&device2host_tx, MidiControllerType::ControlPanel)
+    });
     threads.push(controls_rx_thread);
 
     // Setup thread that transmits MIDI events to APC controller
@@ -87,12 +90,7 @@ fn run() -> Result<()> {
     threads.push(controls_tx_thread);
 
     // Create dispatcher
-    let mut dispatcher = Dispatcher::new(
-        keyboard2host_rx,
-        controls2host_rx,
-        host2controls_tx,
-        synth_ctrl_tx,
-    );
+    let mut dispatcher = Dispatcher::new(device2host_rx, host2controls_tx, synth_ctrl_tx);
     let dispatcher_thread = thread::spawn(move || dispatcher.start());
     threads.push(dispatcher_thread);
 

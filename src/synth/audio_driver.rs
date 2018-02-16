@@ -6,8 +6,8 @@ use synth::sample_stream::SampleStream;
 
 use errors::Result;
 
+pub const SAMPLE_RATE: f64 = 44_100.0;
 const CHANNELS: i32 = 2;
-const SAMPLE_RATE: f64 = 44_100.0;
 const FRAMES_PER_BUFFER: u32 = 64;
 
 pub struct AudioDriver {

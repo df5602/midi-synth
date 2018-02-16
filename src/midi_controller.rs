@@ -9,6 +9,12 @@ use errors::ErrorKind::{MidiControllerNotConnected, MidiOperationNotSupported};
 
 use usb_midi::{MidiMessage, MidiParseStatus, SystemExclusive, SystemExlusiveId, UsbMidiParser};
 
+#[derive(Debug, Copy, Clone)]
+pub enum MidiControllerType {
+    Keyboard,
+    ControlPanel,
+}
+
 /// Utility function to discover all endpoints of a USB device.
 #[allow(dead_code)]
 pub fn describe_device(device: &libusb::Device) -> Result<()> {
@@ -87,7 +93,11 @@ impl<T: UsbMidiDevice> UsbMidiController<T> {
         UsbMidiController { device: device }
     }
 
-    pub fn listen(&self, tx: &Sender<MidiMessage>) -> Result<()> {
+    pub fn listen(
+        &self,
+        tx: &Sender<(MidiMessage, MidiControllerType)>,
+        source: MidiControllerType,
+    ) -> Result<()> {
         let mut buf: [u8; 256] = [0; 256];
         let mut usb_midi_parser = UsbMidiParser::new();
 
@@ -102,7 +112,7 @@ impl<T: UsbMidiDevice> UsbMidiController<T> {
             while begin < end {
                 match usb_midi_parser.parse(&buf[begin..end]) {
                     (MidiParseStatus::Complete(packet), n) => {
-                        tx.send(packet.into_midi_message())?;
+                        tx.send((packet.into_midi_message(), source))?;
                         begin += n;
                     }
                     (MidiParseStatus::Incomplete, n) => {

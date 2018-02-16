@@ -2,7 +2,8 @@ error_chain!{
     foreign_links {
         Usb(::libusb::Error);
         PortAudio(::portaudio::Error);
-        MidiMessageChannel(::std::sync::mpsc::SendError<::usb_midi::MidiMessage>);
+        MidiMessageRxChannel(::std::sync::mpsc::SendError<(::usb_midi::MidiMessage, ::midi_controller::MidiControllerType)>);
+        MidiMessageTxChannel(::std::sync::mpsc::SendError<::usb_midi::MidiMessage>);
         F32Channel(::std::sync::mpsc::SendError<f32>);
     }
 
