@@ -2,17 +2,18 @@ use std::sync::mpsc::Receiver;
 
 use synth::oscillator::Oscillator;
 use synth::sample_stream::SampleStream;
+use synth::dispatcher::SynthControl;
 
 pub struct Synthesizer {
     osc1: Oscillator,
-    freq_in: Receiver<f32>,
+    ctrl_in: Receiver<SynthControl>,
 }
 
 impl Synthesizer {
-    pub fn new(freq_in: Receiver<f32>) -> Synthesizer {
+    pub fn new(ctrl_in: Receiver<SynthControl>) -> Synthesizer {
         Synthesizer {
-            osc1: Oscillator::new(0.04),
-            freq_in: freq_in,
+            osc1: Oscillator::new(0.0),
+            ctrl_in: ctrl_in,
         }
     }
 }
@@ -21,8 +22,10 @@ impl SampleStream for Synthesizer {
     type Sample = f32;
 
     fn next_sample(&mut self) -> Self::Sample {
-        if let Ok(f) = self.freq_in.try_recv() {
-            self.osc1.set_base_frequency(f);
+        if let Ok(f) = self.ctrl_in.try_recv() {
+            match f {
+                SynthControl::Oscillator1Range(range) => self.osc1.set_base_frequency(range),
+            }
         }
 
         self.osc1.next_sample()
