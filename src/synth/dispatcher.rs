@@ -211,82 +211,27 @@ mod tests {
 
     #[test]
     fn master_tune() {
-        let (midi_cmd_tx, midi_resp_rx, synth_ctrl_rx) = setup_dispatcher!();
+        macro_rules! send_and_check {
+            ($tx:ident, $rx_midi:ident, $val:expr, $rx_synth:ident, $tune:expr, $eps:expr) => {
+                send_cmd!($tx, ControlChange::create(0, 0x31, $val), MidiControllerType::ControlPanel);
+                expect_resp!($rx_midi, ControlChange::create(0, 0x31, $val));
 
-        send_cmd!(
-            midi_cmd_tx,
-            ControlChange::create(0, 0x31, 0),
-            MidiControllerType::ControlPanel
-        );
+                let tune = get_resp!($rx_synth);
+                let tune = match tune {
+                    SynthControl::MasterTune(tune) => tune,
+                    _ => panic!("wrong variant!"),
+                };
+                assert_float_eq!(tune, $tune, $eps);
+            };
+        }
 
-        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x31, 0));
+        let (midi_cmd_tx, midi_rsp_rx, synth_ctrl_rx) = setup_dispatcher!();
 
-        let tune = get_resp!(synth_ctrl_rx);
-        let tune = match tune {
-            SynthControl::MasterTune(tune) => tune,
-            _ => panic!("wrong variant!"),
-        };
-        assert_float_eq!(tune, 0.865537, 1e-6);
-
-        send_cmd!(
-            midi_cmd_tx,
-            ControlChange::create(0, 0x31, 32),
-            MidiControllerType::ControlPanel
-        );
-
-        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x31, 32));
-
-        let tune = get_resp!(synth_ctrl_rx);
-        let tune = match tune {
-            SynthControl::MasterTune(tune) => tune,
-            _ => panic!("wrong variant!"),
-        };
-        assert_float_eq!(tune, 0.930342, 1e-6);
-
-        send_cmd!(
-            midi_cmd_tx,
-            ControlChange::create(0, 0x31, 64),
-            MidiControllerType::ControlPanel
-        );
-
-        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x31, 64));
-
-        let tune = get_resp!(synth_ctrl_rx);
-        let tune = match tune {
-            SynthControl::MasterTune(tune) => tune,
-            _ => panic!("wrong variant!"),
-        };
-        assert_float_eq!(tune, 1.0, 1e-6);
-
-        send_cmd!(
-            midi_cmd_tx,
-            ControlChange::create(0, 0x31, 96),
-            MidiControllerType::ControlPanel
-        );
-
-        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x31, 96));
-
-        let tune = get_resp!(synth_ctrl_rx);
-        let tune = match tune {
-            SynthControl::MasterTune(tune) => tune,
-            _ => panic!("wrong variant!"),
-        };
-        assert_float_eq!(tune, 1.074873, 1e-6);
-
-        send_cmd!(
-            midi_cmd_tx,
-            ControlChange::create(0, 0x31, 127),
-            MidiControllerType::ControlPanel
-        );
-
-        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x31, 127));
-
-        let tune = get_resp!(synth_ctrl_rx);
-        let tune = match tune {
-            SynthControl::MasterTune(tune) => tune,
-            _ => panic!("wrong variant!"),
-        };
-        assert_float_eq!(tune, 1.152749, 1e-6);
+        send_and_check!(midi_cmd_tx, midi_rsp_rx, 0, synth_ctrl_rx, 0.865537, 1e-6);
+        send_and_check!(midi_cmd_tx, midi_rsp_rx, 32, synth_ctrl_rx, 0.930342, 1e-6);
+        send_and_check!(midi_cmd_tx, midi_rsp_rx, 64, synth_ctrl_rx, 1.0, 1e-6);
+        send_and_check!(midi_cmd_tx, midi_rsp_rx, 96, synth_ctrl_rx, 1.074873, 1e-6);
+        send_and_check!(midi_cmd_tx, midi_rsp_rx, 127, synth_ctrl_rx, 1.152749, 1e-6);
     }
 
     #[test]
@@ -320,128 +265,42 @@ mod tests {
 
     #[test]
     fn oscillator1_range_valid_positions() {
-        let (midi_cmd_tx, midi_resp_rx, synth_ctrl_rx) = setup_dispatcher!();
+        macro_rules! send_and_check {
+            ($tx:ident, $tx_val:expr, $rx_midi:ident, $rx_val:expr, $rx_synth:ident, $range:expr) => {
+                send_cmd!($tx, ControlChange::create(0, 0x30, $tx_val), MidiControllerType::ControlPanel);
+                expect_resp!($rx_midi, ControlChange::create(0, 0x30, $rx_val));
+                expect_resp!(
+                    $rx_synth,
+                    SynthControl::Oscillator1Range((f64::from($range) / SAMPLE_RATE) as f32));
+            };
+        }
 
-        send_cmd!(
-            midi_cmd_tx,
-            ControlChange::create(0, 0x30, 20),
-            MidiControllerType::ControlPanel
-        );
-        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x30, 21));
-        expect_resp!(
-            synth_ctrl_rx,
-            SynthControl::Oscillator1Range((f64::from(&OscillatorRange::Low) / SAMPLE_RATE) as f32)
-        );
+        let (cmd, rsp, synth_rx) = setup_dispatcher!();
 
-        send_cmd!(
-            midi_cmd_tx,
-            ControlChange::create(0, 0x30, 36),
-            MidiControllerType::ControlPanel
-        );
-        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x30, 36));
-        expect_resp!(
-            synth_ctrl_rx,
-            SynthControl::Oscillator1Range(
-                (f64::from(&OscillatorRange::Range32ft) / SAMPLE_RATE) as f32
-            )
-        );
-
-        send_cmd!(
-            midi_cmd_tx,
-            ControlChange::create(0, 0x30, 54),
-            MidiControllerType::ControlPanel
-        );
-        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x30, 54));
-        expect_resp!(
-            synth_ctrl_rx,
-            SynthControl::Oscillator1Range(
-                (f64::from(&OscillatorRange::Range16ft) / SAMPLE_RATE) as f32
-            )
-        );
-
-        send_cmd!(
-            midi_cmd_tx,
-            ControlChange::create(0, 0x30, 72),
-            MidiControllerType::ControlPanel
-        );
-        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x30, 72));
-        expect_resp!(
-            synth_ctrl_rx,
-            SynthControl::Oscillator1Range(
-                (f64::from(&OscillatorRange::Range8ft) / SAMPLE_RATE) as f32
-            )
-        );
-
-        send_cmd!(
-            midi_cmd_tx,
-            ControlChange::create(0, 0x30, 90),
-            MidiControllerType::ControlPanel
-        );
-        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x30, 90));
-        expect_resp!(
-            synth_ctrl_rx,
-            SynthControl::Oscillator1Range(
-                (f64::from(&OscillatorRange::Range4ft) / SAMPLE_RATE) as f32
-            )
-        );
-
-        send_cmd!(
-            midi_cmd_tx,
-            ControlChange::create(0, 0x30, 110),
-            MidiControllerType::ControlPanel
-        );
-        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x30, 105));
-        expect_resp!(
-            synth_ctrl_rx,
-            SynthControl::Oscillator1Range(
-                (f64::from(&OscillatorRange::Range2ft) / SAMPLE_RATE) as f32
-            )
-        );
+        send_and_check!(cmd, 20, rsp, 21, synth_rx, &OscillatorRange::Low);
+        send_and_check!(cmd, 54, rsp, 54, synth_rx, &OscillatorRange::Range16ft);
+        send_and_check!(cmd, 72, rsp, 72, synth_rx, &OscillatorRange::Range8ft);
+        send_and_check!(cmd, 90, rsp, 90, synth_rx, &OscillatorRange::Range4ft);
+        send_and_check!(cmd, 110, rsp, 105, synth_rx, &OscillatorRange::Range2ft);
     }
 
     #[test]
     fn oscillator1_range_invalid_positions() {
+        macro_rules! send_and_check_no_resp {
+            ($tx:ident, $val:expr, $rx_midi:ident, $rx_synth:ident) => {
+                send_cmd!($tx, ControlChange::create(0, 0x30, $val), MidiControllerType::ControlPanel);
+                expect_no_resp!($rx_midi);
+                expect_no_resp!($rx_synth);
+            };
+        }
+
         let (midi_cmd_tx, midi_resp_rx, synth_ctrl_rx) = setup_dispatcher!();
 
-        send_cmd!(
-            midi_cmd_tx,
-            ControlChange::create(0, 0x30, 30),
-            MidiControllerType::ControlPanel
-        );
-        expect_no_resp!(midi_resp_rx);
-        expect_no_resp!(synth_ctrl_rx);
-
-        send_cmd!(
-            midi_cmd_tx,
-            ControlChange::create(0, 0x30, 40),
-            MidiControllerType::ControlPanel
-        );
-        expect_no_resp!(midi_resp_rx);
-        expect_no_resp!(synth_ctrl_rx);
-
-        send_cmd!(
-            midi_cmd_tx,
-            ControlChange::create(0, 0x30, 60),
-            MidiControllerType::ControlPanel
-        );
-        expect_no_resp!(midi_resp_rx);
-        expect_no_resp!(synth_ctrl_rx);
-
-        send_cmd!(
-            midi_cmd_tx,
-            ControlChange::create(0, 0x30, 80),
-            MidiControllerType::ControlPanel
-        );
-        expect_no_resp!(midi_resp_rx);
-        expect_no_resp!(synth_ctrl_rx);
-
-        send_cmd!(
-            midi_cmd_tx,
-            ControlChange::create(0, 0x30, 100),
-            MidiControllerType::ControlPanel
-        );
-        expect_no_resp!(midi_resp_rx);
-        expect_no_resp!(synth_ctrl_rx);
+        send_and_check_no_resp!(midi_cmd_tx, 30, midi_resp_rx, synth_ctrl_rx);
+        send_and_check_no_resp!(midi_cmd_tx, 40, midi_resp_rx, synth_ctrl_rx);
+        send_and_check_no_resp!(midi_cmd_tx, 60, midi_resp_rx, synth_ctrl_rx);
+        send_and_check_no_resp!(midi_cmd_tx, 80, midi_resp_rx, synth_ctrl_rx);
+        send_and_check_no_resp!(midi_cmd_tx, 100, midi_resp_rx, synth_ctrl_rx);
     }
 
     #[test]
