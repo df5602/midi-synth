@@ -14,6 +14,7 @@ const COLOR_SELECTED: u8 = 124;
 pub enum SynthControl {
     MasterTune(f32),
     Oscillator1Range(f32),
+    Oscillator1Enable(bool),
 }
 
 #[derive(PartialEq)]
@@ -47,6 +48,7 @@ pub struct Dispatcher {
     controls_tx: Sender<MidiMessage>,
     synth_ctrl_tx: Sender<SynthControl>,
     master_tune: u8,
+    osc1_enable: bool,
     osc1_range: OscillatorRange,
 }
 
@@ -61,6 +63,7 @@ impl Dispatcher {
             controls_tx: controls_tx,
             synth_ctrl_tx: synth_ctrl_tx,
             master_tune: 64,
+            osc1_enable: true,
             osc1_range: OscillatorRange::Range8ft,
         }
     }
@@ -79,7 +82,11 @@ impl Dispatcher {
                             _ => {}
                         }
                     }
-                    _ => continue,
+                    MidiMessage::NoteOn(note_on) => match note_on.note_number() {
+                        0x33 => self.update_oscillator_enable()?,
+                        _ => continue,
+                    },
+                    _ => {}
                 },
                 _ => continue,
             }
@@ -128,7 +135,26 @@ impl Dispatcher {
             .send(NoteOn::create(0, 33, COLOR_UNSELECTED))?;
 
         // Set oscillator 1 to on
+        self.osc1_enable = true;
+        self.synth_ctrl_tx
+            .send(SynthControl::Oscillator1Enable(self.osc1_enable))?;
         self.controls_tx.send(NoteOn::create(0, 0x33, 127))?;
+
+        Ok(())
+    }
+
+    fn update_master_tune(&mut self, value: u8) -> Result<()> {
+        if value != self.master_tune {
+            let tune = (f32::from(value) - 64.0) * 5.0 / 128.0;
+
+            self.synth_ctrl_tx
+                .send(SynthControl::MasterTune(2.0_f32.powf(tune / 12.0)))?;
+
+            self.controls_tx
+                .send(ControlChange::create(0, 0x31, value))?;
+
+            self.master_tune = value;
+        }
 
         Ok(())
     }
@@ -158,18 +184,14 @@ impl Dispatcher {
         Ok(())
     }
 
-    fn update_master_tune(&mut self, value: u8) -> Result<()> {
-        if value != self.master_tune {
-            let tune = (f32::from(value) - 64.0) * 5.0 / 128.0;
+    fn update_oscillator_enable(&mut self) -> Result<()> {
+        self.osc1_enable = !self.osc1_enable;
+        let value = if self.osc1_enable { 0x7F } else { 0x00 };
 
-            self.synth_ctrl_tx
-                .send(SynthControl::MasterTune(2.0_f32.powf(tune / 12.0)))?;
+        self.synth_ctrl_tx
+            .send(SynthControl::Oscillator1Enable(self.osc1_enable))?;
 
-            self.controls_tx
-                .send(ControlChange::create(0, 0x31, value))?;
-
-            self.master_tune = value;
-        }
+        self.controls_tx.send(NoteOn::create(0, 0x33, value))?;
 
         Ok(())
     }
@@ -349,5 +371,26 @@ mod tests {
         );
         expect_no_resp!(midi_resp_rx);
         expect_no_resp!(synth_ctrl_rx);
+    }
+
+    #[test]
+    fn oscillator1_enable_disable() {
+        let (midi_cmd_tx, midi_resp_rx, synth_ctrl_rx) = setup_dispatcher!();
+
+        send_cmd!(
+            midi_cmd_tx,
+            NoteOn::create(0, 0x33, 0x7F),
+            MidiControllerType::ControlPanel
+        );
+        expect_resp!(midi_resp_rx, NoteOn::create(0, 0x33, 0x00));
+        expect_resp!(synth_ctrl_rx, SynthControl::Oscillator1Enable(false));
+
+        send_cmd!(
+            midi_cmd_tx,
+            NoteOn::create(0, 0x33, 0x7F),
+            MidiControllerType::ControlPanel
+        );
+        expect_resp!(midi_resp_rx, NoteOn::create(0, 0x33, 0x7F));
+        expect_resp!(synth_ctrl_rx, SynthControl::Oscillator1Enable(true));
     }
 }
