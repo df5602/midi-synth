@@ -88,12 +88,10 @@ impl Dispatcher {
     fn initialize(&mut self) -> Result<()> {
         // Master Tune
         // Set knob to single style
-        let message = ControlChange::create(0, 0x39, 1);
-        self.controls_tx.send(message)?;
+        self.controls_tx.send(ControlChange::create(0, 0x39, 1))?;
 
         // Set knob to position 0
-        let message = ControlChange::create(0, 0x31, 64);
-        self.controls_tx.send(message)?;
+        self.controls_tx.send(ControlChange::create(0, 0x31, 64))?;
 
         // Set master tune to 0
         self.synth_ctrl_tx.send(SynthControl::MasterTune(1.0))?;
@@ -101,12 +99,10 @@ impl Dispatcher {
 
         // Oscillator 1
         // Set knob to single style
-        let message = ControlChange::create(0, 0x38, 1);
-        self.controls_tx.send(message)?;
+        self.controls_tx.send(ControlChange::create(0, 0x38, 1))?;
 
         // Set knob to 8' position
-        let message = ControlChange::create(0, 0x30, 72);
-        self.controls_tx.send(message)?;
+        self.controls_tx.send(ControlChange::create(0, 0x30, 72))?;
 
         // Set range of oscillator 1 to 8' (440 Hz)
         self.osc1_range = OscillatorRange::Range8ft;
