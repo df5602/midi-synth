@@ -1,11 +1,14 @@
 use std::sync::mpsc::{Receiver, Sender};
 use std::f32;
 
-use usb_midi::{ControlChange, MidiMessage};
+use usb_midi::{ControlChange, MidiMessage, NoteOn};
 use midi_controller::MidiControllerType;
 use synth::audio_driver::SAMPLE_RATE;
 
 use errors::Result;
+
+const COLOR_UNSELECTED: u8 = 38;
+const COLOR_SELECTED: u8 = 124;
 
 #[derive(Debug, PartialEq)]
 pub enum SynthControl {
@@ -109,6 +112,23 @@ impl Dispatcher {
         self.synth_ctrl_tx.send(SynthControl::Oscillator1Range(
             (f64::from(&self.osc1_range) / SAMPLE_RATE) as f32,
         ))?;
+
+        // Set LEDs of unselected waveforms to unselected (except first one)
+        self.controls_tx
+            .send(NoteOn::create(0, 0, COLOR_UNSELECTED))?;
+        self.controls_tx
+            .send(NoteOn::create(0, 8, COLOR_UNSELECTED))?;
+        self.controls_tx
+            .send(NoteOn::create(0, 16, COLOR_UNSELECTED))?;
+        self.controls_tx
+            .send(NoteOn::create(0, 24, COLOR_UNSELECTED))?;
+        self.controls_tx
+            .send(NoteOn::create(0, 32, COLOR_SELECTED))?;
+        self.controls_tx
+            .send(NoteOn::create(0, 33, COLOR_UNSELECTED))?;
+
+        // Set oscillator 1 to on
+        self.controls_tx.send(NoteOn::create(0, 0x33, 127))?;
 
         Ok(())
     }
