@@ -1,4 +1,5 @@
 use std::sync::mpsc::{Receiver, Sender};
+use std::f32;
 
 use usb_midi::{ControlChange, MidiMessage};
 use midi_controller::MidiControllerType;
@@ -8,6 +9,7 @@ use errors::Result;
 
 #[derive(Debug, PartialEq)]
 pub enum SynthControl {
+    MasterTune(f32),
     Oscillator1Range(f32),
 }
 
@@ -41,6 +43,7 @@ pub struct Dispatcher {
     controls_rx: Receiver<(MidiMessage, MidiControllerType)>,
     controls_tx: Sender<MidiMessage>,
     synth_ctrl_tx: Sender<SynthControl>,
+    master_tune: u8,
     osc1_range: OscillatorRange,
 }
 
@@ -54,6 +57,7 @@ impl Dispatcher {
             controls_rx: controls_rx,
             controls_tx: controls_tx,
             synth_ctrl_tx: synth_ctrl_tx,
+            master_tune: 64,
             osc1_range: OscillatorRange::Range8ft,
         }
     }
@@ -68,12 +72,13 @@ impl Dispatcher {
                     MidiMessage::ControlChange(control_change) => {
                         match control_change.control_number() {
                             0x30 => self.update_oscillator_range(control_change.control_value())?,
+                            0x31 => self.update_master_tune(control_change.control_value())?,
                             _ => {}
                         }
                     }
-                    _ => {}
+                    _ => continue,
                 },
-                (MidiControllerType::Keyboard, _midi_message) => {}
+                _ => continue,
             }
         }
 
@@ -81,6 +86,19 @@ impl Dispatcher {
     }
 
     fn initialize(&mut self) -> Result<()> {
+        // Master Tune
+        // Set knob to single style
+        let message = ControlChange::create(0, 0x39, 1);
+        self.controls_tx.send(message)?;
+
+        // Set knob to position 0
+        let message = ControlChange::create(0, 0x31, 64);
+        self.controls_tx.send(message)?;
+
+        // Set master tune to 0
+        self.synth_ctrl_tx.send(SynthControl::MasterTune(1.0))?;
+        self.master_tune = 64;
+
         // Oscillator 1
         // Set knob to single style
         let message = ControlChange::create(0, 0x38, 1);
@@ -123,6 +141,22 @@ impl Dispatcher {
 
         Ok(())
     }
+
+    fn update_master_tune(&mut self, value: u8) -> Result<()> {
+        if value != self.master_tune {
+            let tune = (f32::from(value) - 64.0) * 5.0 / 128.0;
+
+            self.synth_ctrl_tx
+                .send(SynthControl::MasterTune(2.0_f32.powf(tune / 12.0)))?;
+
+            self.controls_tx
+                .send(ControlChange::create(0, 0x31, value))?;
+
+            self.master_tune = value;
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -161,10 +195,131 @@ mod tests {
         };
     }
 
+    macro_rules! get_resp {
+        ($rx:ident) => {{
+            $rx.recv_timeout(Duration::from_millis(100)).unwrap()
+        }};
+    }
+
     macro_rules! expect_no_resp {
         ($rx:ident) => {
             assert!($rx.recv_timeout(Duration::from_millis(100)).is_err());
         };
+    }
+
+    macro_rules! assert_float_eq {
+        ($left:expr, $right:expr, $eps:expr) => {
+            assert!(($left - $right).abs() < $eps, "Expected: {}, got: {}", $left, $right);
+        };
+    }
+
+    #[test]
+    fn master_tune() {
+        let (midi_cmd_tx, midi_resp_rx, synth_ctrl_rx) = setup_dispatcher!();
+
+        send_cmd!(
+            midi_cmd_tx,
+            ControlChange::create(0, 0x31, 0),
+            MidiControllerType::ControlPanel
+        );
+
+        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x31, 0));
+
+        let tune = get_resp!(synth_ctrl_rx);
+        let tune = match tune {
+            SynthControl::MasterTune(tune) => tune,
+            _ => panic!("wrong variant!"),
+        };
+        assert_float_eq!(tune, 0.865537, 1e-6);
+
+        send_cmd!(
+            midi_cmd_tx,
+            ControlChange::create(0, 0x31, 32),
+            MidiControllerType::ControlPanel
+        );
+
+        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x31, 32));
+
+        let tune = get_resp!(synth_ctrl_rx);
+        let tune = match tune {
+            SynthControl::MasterTune(tune) => tune,
+            _ => panic!("wrong variant!"),
+        };
+        assert_float_eq!(tune, 0.930342, 1e-6);
+
+        send_cmd!(
+            midi_cmd_tx,
+            ControlChange::create(0, 0x31, 64),
+            MidiControllerType::ControlPanel
+        );
+
+        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x31, 64));
+
+        let tune = get_resp!(synth_ctrl_rx);
+        let tune = match tune {
+            SynthControl::MasterTune(tune) => tune,
+            _ => panic!("wrong variant!"),
+        };
+        assert_float_eq!(tune, 1.0, 1e-6);
+
+        send_cmd!(
+            midi_cmd_tx,
+            ControlChange::create(0, 0x31, 96),
+            MidiControllerType::ControlPanel
+        );
+
+        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x31, 96));
+
+        let tune = get_resp!(synth_ctrl_rx);
+        let tune = match tune {
+            SynthControl::MasterTune(tune) => tune,
+            _ => panic!("wrong variant!"),
+        };
+        assert_float_eq!(tune, 1.074873, 1e-6);
+
+        send_cmd!(
+            midi_cmd_tx,
+            ControlChange::create(0, 0x31, 127),
+            MidiControllerType::ControlPanel
+        );
+
+        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x31, 127));
+
+        let tune = get_resp!(synth_ctrl_rx);
+        let tune = match tune {
+            SynthControl::MasterTune(tune) => tune,
+            _ => panic!("wrong variant!"),
+        };
+        assert_float_eq!(tune, 1.152749, 1e-6);
+    }
+
+    #[test]
+    fn master_tune_update_only_when_different() {
+        let (midi_cmd_tx, midi_resp_rx, synth_ctrl_rx) = setup_dispatcher!();
+
+        send_cmd!(
+            midi_cmd_tx,
+            ControlChange::create(0, 0x31, 32),
+            MidiControllerType::ControlPanel
+        );
+
+        expect_resp!(midi_resp_rx, ControlChange::create(0, 0x31, 32));
+
+        let tune = get_resp!(synth_ctrl_rx);
+        let tune = match tune {
+            SynthControl::MasterTune(tune) => tune,
+            _ => panic!("wrong variant!"),
+        };
+        assert_float_eq!(tune, 0.930342, 1e-6);
+
+        send_cmd!(
+            midi_cmd_tx,
+            ControlChange::create(0, 0x31, 32),
+            MidiControllerType::ControlPanel
+        );
+
+        expect_no_resp!(midi_resp_rx);
+        expect_no_resp!(synth_ctrl_rx);
     }
 
     #[test]

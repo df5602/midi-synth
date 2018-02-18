@@ -8,14 +8,18 @@ pub struct Oscillator {
 }
 
 impl Oscillator {
-    pub fn new(base_frequency: f32) -> Oscillator {
+    pub fn new(master_tune: f32, range: f32) -> Oscillator {
         Oscillator {
-            triangle: Triangle::new(base_frequency),
+            triangle: Triangle::new(master_tune, range),
         }
     }
 
-    pub fn set_base_frequency(&mut self, base_frequency: f32) {
-        self.triangle.set_base_frequency(base_frequency);
+    pub fn set_range(&mut self, range: f32) {
+        self.triangle.set_range(range);
+    }
+
+    pub fn set_master_tune(&mut self, master_tune: f32) {
+        self.triangle.set_master_tune(master_tune);
     }
 }
 
