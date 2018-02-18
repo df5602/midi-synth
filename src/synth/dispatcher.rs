@@ -6,13 +6,6 @@ use synth::audio_driver::SAMPLE_RATE;
 
 use errors::Result;
 
-const RANGE_LO: f64 = 13.75;
-const RANGE_32FT: f64 = 110.0;
-const RANGE_16FT: f64 = 220.0;
-const RANGE_8FT: f64 = 440.0;
-const RANGE_4FT: f64 = 880.0;
-const RANGE_2FT: f64 = 1760.0;
-
 #[derive(Debug, PartialEq)]
 pub enum SynthControl {
     Oscillator1Range(f32),
@@ -30,13 +23,16 @@ enum OscillatorRange {
 
 impl<'a> From<&'a OscillatorRange> for f64 {
     fn from(range: &OscillatorRange) -> f64 {
+        let a = 440.0;
+        // c'' (one octave above c', i.e. middle C) is 300 cents above a'
+        let middle_c = 0.5 * a * 2.0_f64.powf(3.0 / 12.0);
         match *range {
-            OscillatorRange::Low => RANGE_LO,
-            OscillatorRange::Range32ft => RANGE_32FT,
-            OscillatorRange::Range16ft => RANGE_16FT,
-            OscillatorRange::Range8ft => RANGE_8FT,
-            OscillatorRange::Range4ft => RANGE_4FT,
-            OscillatorRange::Range2ft => RANGE_2FT,
+            OscillatorRange::Low => 0.0625 * middle_c,
+            OscillatorRange::Range32ft => 0.25 * middle_c,
+            OscillatorRange::Range16ft => 0.5 * middle_c,
+            OscillatorRange::Range8ft => middle_c,
+            OscillatorRange::Range4ft => 2.0 * middle_c,
+            OscillatorRange::Range2ft => 4.0 * middle_c,
         }
     }
 }
@@ -95,10 +91,10 @@ impl Dispatcher {
         self.controls_tx.send(message)?;
 
         // Set range of oscillator 1 to 8' (440 Hz)
-        self.synth_ctrl_tx.send(SynthControl::Oscillator1Range(
-            (RANGE_8FT / SAMPLE_RATE) as f32,
-        ))?;
         self.osc1_range = OscillatorRange::Range8ft;
+        self.synth_ctrl_tx.send(SynthControl::Oscillator1Range(
+            (f64::from(&self.osc1_range) / SAMPLE_RATE) as f32,
+        ))?;
 
         Ok(())
     }
@@ -183,7 +179,7 @@ mod tests {
         expect_resp!(midi_resp_rx, ControlChange::create(0, 0x30, 21));
         expect_resp!(
             synth_ctrl_rx,
-            SynthControl::Oscillator1Range((RANGE_LO / SAMPLE_RATE) as f32)
+            SynthControl::Oscillator1Range((f64::from(&OscillatorRange::Low) / SAMPLE_RATE) as f32)
         );
 
         send_cmd!(
@@ -194,7 +190,9 @@ mod tests {
         expect_resp!(midi_resp_rx, ControlChange::create(0, 0x30, 36));
         expect_resp!(
             synth_ctrl_rx,
-            SynthControl::Oscillator1Range((RANGE_32FT / SAMPLE_RATE) as f32)
+            SynthControl::Oscillator1Range(
+                (f64::from(&OscillatorRange::Range32ft) / SAMPLE_RATE) as f32
+            )
         );
 
         send_cmd!(
@@ -205,7 +203,9 @@ mod tests {
         expect_resp!(midi_resp_rx, ControlChange::create(0, 0x30, 54));
         expect_resp!(
             synth_ctrl_rx,
-            SynthControl::Oscillator1Range((RANGE_16FT / SAMPLE_RATE) as f32)
+            SynthControl::Oscillator1Range(
+                (f64::from(&OscillatorRange::Range16ft) / SAMPLE_RATE) as f32
+            )
         );
 
         send_cmd!(
@@ -216,7 +216,9 @@ mod tests {
         expect_resp!(midi_resp_rx, ControlChange::create(0, 0x30, 72));
         expect_resp!(
             synth_ctrl_rx,
-            SynthControl::Oscillator1Range((RANGE_8FT / SAMPLE_RATE) as f32)
+            SynthControl::Oscillator1Range(
+                (f64::from(&OscillatorRange::Range8ft) / SAMPLE_RATE) as f32
+            )
         );
 
         send_cmd!(
@@ -227,7 +229,9 @@ mod tests {
         expect_resp!(midi_resp_rx, ControlChange::create(0, 0x30, 90));
         expect_resp!(
             synth_ctrl_rx,
-            SynthControl::Oscillator1Range((RANGE_4FT / SAMPLE_RATE) as f32)
+            SynthControl::Oscillator1Range(
+                (f64::from(&OscillatorRange::Range4ft) / SAMPLE_RATE) as f32
+            )
         );
 
         send_cmd!(
@@ -238,7 +242,9 @@ mod tests {
         expect_resp!(midi_resp_rx, ControlChange::create(0, 0x30, 105));
         expect_resp!(
             synth_ctrl_rx,
-            SynthControl::Oscillator1Range((RANGE_2FT / SAMPLE_RATE) as f32)
+            SynthControl::Oscillator1Range(
+                (f64::from(&OscillatorRange::Range2ft) / SAMPLE_RATE) as f32
+            )
         );
     }
 
@@ -299,7 +305,9 @@ mod tests {
         expect_resp!(midi_resp_rx, ControlChange::create(0, 0x30, 54));
         expect_resp!(
             synth_ctrl_rx,
-            SynthControl::Oscillator1Range((RANGE_16FT / SAMPLE_RATE) as f32)
+            SynthControl::Oscillator1Range(
+                (f64::from(&OscillatorRange::Range16ft) / SAMPLE_RATE) as f32
+            )
         );
 
         send_cmd!(
