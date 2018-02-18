@@ -70,6 +70,30 @@ iterator!(Triangle);
 mod tests {
     use super::*;
 
+    macro_rules! assert_float_eq {
+        ($left:expr, $right:expr, $eps:expr) => {{
+            let left = $left;
+            let right = $right;
+            assert!((left - right).abs() < $eps, "Expected: {}, got: {}", left, right);
+        }};
+    }
+
+    macro_rules! compare {
+        ($generated:ident, $precalculated:ident, $eps:expr) => {
+            let mut i = 0;
+            println!();
+            for sample in $generated {
+                if i == $precalculated.len() {
+                    break;
+                }
+                println!("Precalculated: {}, generated: {}", $precalculated[i], sample);
+                assert_float_eq!($precalculated[i], sample, $eps);
+                i += 1;
+            }
+            assert_eq!(i, $precalculated.len());
+        };
+    }
+
     #[test]
     fn basic_triangle() {
         let triangle = Triangle::new(1.0, 0.0375);
@@ -80,17 +104,7 @@ mod tests {
             0.2, 0.35, 0.5, 0.65, 0.8, 0.95,
         ];
 
-        let mut i = 0;
-        println!();
-        for sample in triangle {
-            if i == samples.len() {
-                break;
-            }
-            println!("Is: {}, should be: {}", sample, samples[i]);
-            assert!((sample - samples[i]).abs() < 1e-6);
-            i += 1;
-        }
-        assert_eq!(i, samples.len());
+        compare!(triangle, samples, 1e-6);
     }
 
     #[test]
@@ -101,22 +115,12 @@ mod tests {
             0.3, 0.6, 0.9, 0.8, 0.5, 0.2, -0.1, -0.4, -0.7, -1.0, -0.7, -0.4, -0.1, 0.2
         ];
 
-        assert!((triangle.next().unwrap() - 0.0).abs() < 1e-6);
-        assert!((triangle.next().unwrap() - 0.15).abs() < 1e-6);
+        assert_float_eq!(0.0, triangle.next().unwrap(), 1e-6);
+        assert_float_eq!(0.15, triangle.next().unwrap(), 1e-6);
 
         triangle.set_range(0.075);
 
-        let mut i = 0;
-        println!();
-        for sample in triangle {
-            if i == samples.len() {
-                break;
-            }
-            println!("Is: {}, should be: {}", sample, samples[i]);
-            assert!((sample - samples[i]).abs() < 1e-6);
-            i += 1;
-        }
-        assert_eq!(i, samples.len());
+        compare!(triangle, samples, 1e-6);
     }
 
     #[test]
@@ -127,41 +131,11 @@ mod tests {
             0.4, 0.7, 1.0, 0.7, 0.4, 0.1, -0.2, -0.5, -0.8, -0.9, -0.6, -0.3, 0.0
         ];
 
-        assert!((triangle.next().unwrap() - 0.0).abs() < 1e-6);
-        assert!((triangle.next().unwrap() - 0.2).abs() < 1e-6);
+        assert_float_eq!(0.0, triangle.next().unwrap(), 1e-6);
+        assert_float_eq!(0.2, triangle.next().unwrap(), 1e-6);
 
         triangle.set_master_tune(1.5);
 
-        let mut i = 0;
-        println!();
-        for sample in triangle {
-            if i == samples.len() {
-                break;
-            }
-            println!("Is: {}, should be: {}", sample, samples[i]);
-            assert!((sample - samples[i]).abs() < 1e-6);
-            i += 1;
-        }
-        assert_eq!(i, samples.len());
-    }
-
-    #[test]
-    fn limit_output_to_1() {
-        let triangle = Triangle::new(1.0, 0.05);
-
-        let samples = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.8, 0.6, 0.4, 0.2, 0.0];
-
-        let mut i = 0;
-        println!();
-        for sample in triangle {
-            if i == samples.len() {
-                break;
-            }
-            println!("Is: {}, should be: {}", sample, samples[i]);
-            assert!((sample - samples[i]).abs() < 1e-6);
-            assert!(sample <= 1.0 && sample >= -1.0);
-            i += 1;
-        }
-        assert_eq!(i, samples.len());
+        compare!(triangle, samples, 1e-6);
     }
 }

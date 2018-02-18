@@ -204,9 +204,11 @@ mod tests {
     }
 
     macro_rules! assert_float_eq {
-        ($left:expr, $right:expr, $eps:expr) => {
-            assert!(($left - $right).abs() < $eps, "Expected: {}, got: {}", $left, $right);
-        };
+        ($left:expr, $right:expr, $eps:expr) => {{
+            let left = $left;
+            let right = $right;
+            assert!((left - right).abs() < $eps, "Expected: {}, got: {}", left, right);
+        }};
     }
 
     #[test]
@@ -221,7 +223,7 @@ mod tests {
                     SynthControl::MasterTune(tune) => tune,
                     _ => panic!("wrong variant!"),
                 };
-                assert_float_eq!(tune, $tune, $eps);
+                assert_float_eq!($tune, tune, $eps);
             };
         }
 
