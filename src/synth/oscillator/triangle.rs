@@ -45,16 +45,16 @@ impl SampleStream for Triangle {
         // Calculate phase angle
         // (Do it this seemingly more complicated than necessary way, since this seems to minimize
         // floating point errors)
-        let mut phase_angle =
-            self.phase_offset.get() + self.sample_counter.get() * self.base_frequency.get();
+        let mut sample_counter = self.sample_counter.get();
+        let mut phase_angle = self.phase_offset.get() + sample_counter * self.base_frequency.get();
 
         if phase_angle >= 1.0 {
             phase_angle -= 1.0;
-            self.sample_counter.set(0.0);
+            sample_counter = 0.0;
             self.phase_offset.set(phase_angle);
         }
 
-        self.sample_counter.set(self.sample_counter.get() + 1.0);
+        self.sample_counter.set(sample_counter + 1.0);
 
         // Calculate output value
         let output_value = if phase_angle < 0.5 {
