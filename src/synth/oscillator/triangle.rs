@@ -1,55 +1,60 @@
+use std::cell::Cell;
+
 use synth::sample_stream::SampleStream;
 
 pub struct Triangle {
-    base_frequency: f32,
-    master_tune: f32,
-    range: f32,
-    sample_counter: f32,
-    phase_offset: f32,
+    base_frequency: Cell<f32>,
+    master_tune: Cell<f32>,
+    range: Cell<f32>,
+    sample_counter: Cell<f32>,
+    phase_offset: Cell<f32>,
 }
 
 impl Triangle {
     pub fn new(master_tune: f32, range: f32) -> Triangle {
         Triangle {
-            base_frequency: master_tune * range,
-            master_tune: master_tune,
-            range: range,
-            sample_counter: 0.0,
-            phase_offset: 0.25,
+            base_frequency: Cell::new(master_tune * range),
+            master_tune: Cell::new(master_tune),
+            range: Cell::new(range),
+            sample_counter: Cell::new(0.0),
+            phase_offset: Cell::new(0.25),
         }
     }
 
-    pub fn set_range(&mut self, range: f32) {
-        self.phase_offset += self.sample_counter * self.base_frequency;
-        self.base_frequency = self.master_tune * range;
-        self.range = range;
-        self.sample_counter = 0.0;
+    pub fn set_range(&self, range: f32) {
+        self.phase_offset
+            .set(self.phase_offset.get() + self.sample_counter.get() * self.base_frequency.get());
+        self.base_frequency.set(self.master_tune.get() * range);
+        self.range.set(range);
+        self.sample_counter.set(0.0);
     }
 
-    pub fn set_master_tune(&mut self, master_tune: f32) {
-        self.phase_offset += self.sample_counter * self.base_frequency;
-        self.base_frequency = master_tune * self.range;
-        self.master_tune = master_tune;
-        self.sample_counter = 0.0;
+    pub fn set_master_tune(&self, master_tune: f32) {
+        self.phase_offset
+            .set(self.phase_offset.get() + self.sample_counter.get() * self.base_frequency.get());
+        self.base_frequency.set(master_tune * self.range.get());
+        self.master_tune.set(master_tune);
+        self.sample_counter.set(0.0);
     }
 }
 
 impl SampleStream for Triangle {
     type Sample = f32;
 
-    fn next_sample(&mut self) -> Self::Sample {
+    fn next_sample(&self) -> Self::Sample {
         // Calculate phase angle
         // (Do it this seemingly more complicated than necessary way, since this seems to minimize
         // floating point errors)
-        let mut phase_angle = self.phase_offset + self.sample_counter * self.base_frequency;
+        let mut phase_angle =
+            self.phase_offset.get() + self.sample_counter.get() * self.base_frequency.get();
 
         if phase_angle >= 1.0 {
             phase_angle -= 1.0;
-            self.sample_counter = 0.0;
-            self.phase_offset = phase_angle;
+            self.sample_counter.set(0.0);
+            self.phase_offset.set(phase_angle);
         }
 
-        self.sample_counter += 1.0;
+        self.sample_counter.set(self.sample_counter.get() + 1.0);
 
         // Calculate output value
         let output_value = if phase_angle < 0.5 {

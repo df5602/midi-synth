@@ -25,7 +25,7 @@ impl AudioDriver {
         })
     }
 
-    pub fn start(&mut self, mut synthesizer: Synthesizer) -> Result<()> {
+    pub fn start(&mut self, synthesizer: Synthesizer) -> Result<()> {
         let mut settings = self.portaudio.default_output_stream_settings(
             CHANNELS,
             SAMPLE_RATE,

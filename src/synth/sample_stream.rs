@@ -1,7 +1,7 @@
 pub trait SampleStream {
     type Sample;
 
-    fn next_sample(&mut self) -> Self::Sample;
+    fn next_sample(&self) -> Self::Sample;
 }
 
 macro_rules! iterator {
