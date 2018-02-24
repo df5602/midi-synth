@@ -80,12 +80,13 @@ impl Dispatcher {
                             0x30 => self.update_oscillator_range(control_change.control_value())?,
                             0x31 => self.update_master_tune(control_change.control_value())?,
                             _ => {}
+                    },
+                    MidiMessage::NoteOn(note_on) => {
+                        match (note_on.note_number(), note_on.channel()) {
+                            (0x33, 0) => self.update_oscillator_enable()?,
+                            _ => continue,
                         }
                     }
-                    MidiMessage::NoteOn(note_on) => match note_on.note_number() {
-                        0x33 => self.update_oscillator_enable()?,
-                        _ => continue,
-                    },
                     _ => {}
                 },
                 _ => continue,
@@ -392,5 +393,18 @@ mod tests {
         );
         expect_resp!(midi_resp_rx, NoteOn::create(0, 0x33, 0x7F));
         expect_resp!(synth_ctrl_rx, SynthControl::Oscillator1Enable(true));
+    }
+
+    #[test]
+    fn oscillator1_enable_only_reacts_to_track_select_1() {
+        let (midi_cmd_tx, midi_resp_rx, synth_ctrl_rx) = setup_dispatcher!();
+
+        send_cmd!(
+            midi_cmd_tx,
+            NoteOn::create(1, 0x33, 0x7F),
+            MidiControllerType::ControlPanel
+        );
+        expect_no_resp!(midi_resp_rx);
+        expect_no_resp!(synth_ctrl_rx);
     }
 }
