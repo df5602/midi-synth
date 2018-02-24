@@ -32,6 +32,7 @@ impl SampleStream for Synthesizer {
                 SynthControl::MasterTune(frequency) => self.osc1.set_master_tune(frequency),
                 SynthControl::Oscillator1Range(range) => self.osc1.set_range(range),
                 SynthControl::Oscillator1Enable(enabled) => self.mixer.set_enabled(enabled),
+                SynthControl::Oscillator1Volume(volume) => self.mixer.set_volume(volume),
             }
         }
 

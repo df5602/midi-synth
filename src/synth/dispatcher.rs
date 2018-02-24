@@ -15,6 +15,7 @@ pub enum SynthControl {
     MasterTune(f32),
     Oscillator1Range(f32),
     Oscillator1Enable(bool),
+    Oscillator1Volume(f32),
 }
 
 #[derive(PartialEq)]
@@ -48,8 +49,9 @@ pub struct Dispatcher {
     controls_tx: Sender<MidiMessage>,
     synth_ctrl_tx: Sender<SynthControl>,
     master_tune: u8,
-    osc1_enable: bool,
     osc1_range: OscillatorRange,
+    osc1_enable: bool,
+    osc1_volume: u8,
 }
 
 impl Dispatcher {
@@ -63,8 +65,9 @@ impl Dispatcher {
             controls_tx: controls_tx,
             synth_ctrl_tx: synth_ctrl_tx,
             master_tune: 64,
-            osc1_enable: true,
             osc1_range: OscillatorRange::Range8ft,
+            osc1_enable: true,
+            osc1_volume: 0,
         }
     }
 
@@ -75,11 +78,14 @@ impl Dispatcher {
         while let Ok((midi_message, source)) = self.controls_rx.recv() {
             match (source, midi_message) {
                 (MidiControllerType::ControlPanel, midi_message) => match midi_message {
-                    MidiMessage::ControlChange(control_change) => {
-                        match control_change.control_number() {
-                            0x30 => self.update_oscillator_range(control_change.control_value())?,
-                            0x31 => self.update_master_tune(control_change.control_value())?,
-                            _ => {}
+                    MidiMessage::ControlChange(control_change) => match (
+                        control_change.control_number(),
+                        control_change.channel(),
+                    ) {
+                        (0x07, 0) => self.update_oscillator_volume(control_change.control_value())?,
+                        (0x30, _) => self.update_oscillator_range(control_change.control_value())?,
+                        (0x31, _) => self.update_master_tune(control_change.control_value())?,
+                        _ => {}
                     },
                     MidiMessage::NoteOn(note_on) => {
                         match (note_on.note_number(), note_on.channel()) {
@@ -141,6 +147,11 @@ impl Dispatcher {
             .send(SynthControl::Oscillator1Enable(self.osc1_enable))?;
         self.controls_tx.send(NoteOn::create(0, 0x33, 127))?;
 
+        // Set oscillator 1 volume to 0
+        self.osc1_volume = 0;
+        self.synth_ctrl_tx
+            .send(SynthControl::Oscillator1Volume(0.0))?;
+
         Ok(())
     }
 
@@ -193,6 +204,21 @@ impl Dispatcher {
             .send(SynthControl::Oscillator1Enable(self.osc1_enable))?;
 
         self.controls_tx.send(NoteOn::create(0, 0x33, value))?;
+
+        Ok(())
+    }
+
+    fn update_oscillator_volume(&mut self, value: u8) -> Result<()> {
+        const DB_RANGE: f32 = 50.0; // 50 dB
+
+        if value != self.osc1_volume {
+            let volume = 10.0_f32.powf(0.05 * DB_RANGE / 127.0 * (f32::from(value) - 127.0));
+
+            self.synth_ctrl_tx
+                .send(SynthControl::Oscillator1Volume(volume))?;
+
+            self.osc1_volume = value;
+        }
 
         Ok(())
     }
@@ -402,6 +428,48 @@ mod tests {
         send_cmd!(
             midi_cmd_tx,
             NoteOn::create(1, 0x33, 0x7F),
+            MidiControllerType::ControlPanel
+        );
+        expect_no_resp!(midi_resp_rx);
+        expect_no_resp!(synth_ctrl_rx);
+    }
+
+    #[test]
+    fn oscillator1_volume() {
+        let (midi_cmd_tx, midi_resp_rx, synth_ctrl_rx) = setup_dispatcher!();
+
+        send_cmd!(
+            midi_cmd_tx,
+            ControlChange::create(0, 0x07, 0x7F),
+            MidiControllerType::ControlPanel
+        );
+        expect_no_resp!(midi_resp_rx);
+        expect_resp!(synth_ctrl_rx, SynthControl::Oscillator1Volume(1.0));
+
+        send_cmd!(
+            midi_cmd_tx,
+            ControlChange::create(0, 0x07, 0x3F),
+            MidiControllerType::ControlPanel
+        );
+        expect_no_resp!(midi_resp_rx);
+        expect_resp!(synth_ctrl_rx, SynthControl::Oscillator1Volume(0.05497402));
+
+        send_cmd!(
+            midi_cmd_tx,
+            ControlChange::create(0, 0x07, 0x00),
+            MidiControllerType::ControlPanel
+        );
+        expect_no_resp!(midi_resp_rx);
+        expect_resp!(synth_ctrl_rx, SynthControl::Oscillator1Volume(0.0031622776));
+    }
+
+    #[test]
+    fn oscillator1_volume_only_reacts_to_track_fader_1() {
+        let (midi_cmd_tx, midi_resp_rx, synth_ctrl_rx) = setup_dispatcher!();
+
+        send_cmd!(
+            midi_cmd_tx,
+            ControlChange::create(1, 0x07, 0x7F),
             MidiControllerType::ControlPanel
         );
         expect_no_resp!(midi_resp_rx);
