@@ -21,6 +21,10 @@ impl Oscillator {
     pub fn set_range(&self, range: f32) {
         self.triangle.set_range(range);
     }
+
+    pub fn set_note(&self, note: f32) {
+        self.triangle.set_note(note);
+    }
 }
 
 impl SampleStream for Oscillator {

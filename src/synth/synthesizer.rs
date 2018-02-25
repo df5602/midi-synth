@@ -33,6 +33,7 @@ impl SampleStream for Synthesizer {
                 SynthControl::Oscillator1Range(range) => self.osc1.set_range(range),
                 SynthControl::Oscillator1Enable(enabled) => self.mixer.set_enabled(enabled),
                 SynthControl::Oscillator1Volume(volume) => self.mixer.set_volume(volume),
+                SynthControl::NoteOn(note) => self.osc1.set_note(note),
             }
         }
 

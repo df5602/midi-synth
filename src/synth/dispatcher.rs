@@ -16,6 +16,7 @@ pub enum SynthControl {
     Oscillator1Range(f32),
     Oscillator1Enable(bool),
     Oscillator1Volume(f32),
+    NoteOn(f32),
 }
 
 #[derive(PartialEq)]
@@ -95,7 +96,10 @@ impl Dispatcher {
                     }
                     _ => {}
                 },
-                _ => continue,
+                (MidiControllerType::Keyboard, midi_message) => match midi_message {
+                    MidiMessage::NoteOn(note_on) => self.note_on(note_on.note_number())?,
+                    _ => continue,
+                },
             }
         }
 
@@ -219,6 +223,15 @@ impl Dispatcher {
 
             self.osc1_volume = value;
         }
+
+        Ok(())
+    }
+
+    fn note_on(&mut self, note_number: u8) -> Result<()> {
+        let half_steps = f32::from(note_number) - 60.0;
+        let freq = 2.0_f32.powf(half_steps / 12.0);
+
+        self.synth_ctrl_tx.send(SynthControl::NoteOn(freq))?;
 
         Ok(())
     }
@@ -474,5 +487,28 @@ mod tests {
         );
         expect_no_resp!(midi_resp_rx);
         expect_no_resp!(synth_ctrl_rx);
+    }
+
+    #[test]
+    fn keyboard_note_60_should_sound_middle_c() {
+        macro_rules! send_and_check {
+            ($tx:ident, $note:expr, $midi_rx:ident, $synth_rx:ident, $expected:expr, $eps:expr) => {
+                send_cmd!($tx, NoteOn::create(0, $note, 127), MidiControllerType::Keyboard);
+                expect_no_resp!($midi_rx);
+                let note = match get_resp!($synth_rx) {
+                    SynthControl::NoteOn(note) => note,
+                    _ => panic!("wrong variant!"),
+                };
+                assert_float_eq!($expected, note, $eps);
+            };
+        }
+
+        let (midi_cmd_tx, midi_resp_rx, synth_ctrl_rx) = setup_dispatcher!();
+
+        send_and_check!(midi_cmd_tx, 60, midi_resp_rx, synth_ctrl_rx, 1.0, 1e-6);
+        send_and_check!(midi_cmd_tx, 72, midi_resp_rx, synth_ctrl_rx, 2.0, 1e-6);
+        send_and_check!(midi_cmd_tx, 48, midi_resp_rx, synth_ctrl_rx, 0.5, 1e-6);
+        send_and_check!(midi_cmd_tx, 84, midi_resp_rx, synth_ctrl_rx, 4.0, 1e-6);
+        send_and_check!(midi_cmd_tx, 36, midi_resp_rx, synth_ctrl_rx, 0.25, 1e-6);
     }
 }

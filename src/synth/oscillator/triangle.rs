@@ -6,6 +6,7 @@ pub struct Triangle {
     base_frequency: Cell<f32>,
     master_tune: Cell<f32>,
     range: Cell<f32>,
+    note: Cell<f32>,
     sample_counter: Cell<f32>,
     phase_offset: Cell<f32>,
 }
@@ -16,24 +17,31 @@ impl Triangle {
             base_frequency: Cell::new(master_tune * range),
             master_tune: Cell::new(master_tune),
             range: Cell::new(range),
+            note: Cell::new(1.0),
             sample_counter: Cell::new(0.0),
             phase_offset: Cell::new(0.25),
         }
     }
 
     pub fn set_range(&self, range: f32) {
-        self.phase_offset
-            .set(self.phase_offset.get() + self.sample_counter.get() * self.base_frequency.get());
-        self.base_frequency.set(self.master_tune.get() * range);
+        self.update_base_frequency(self.master_tune.get(), range, self.note.get());
         self.range.set(range);
-        self.sample_counter.set(0.0);
     }
 
     pub fn set_master_tune(&self, master_tune: f32) {
+        self.update_base_frequency(master_tune, self.range.get(), self.note.get());
+        self.master_tune.set(master_tune);
+    }
+
+    pub fn set_note(&self, note: f32) {
+        self.update_base_frequency(self.master_tune.get(), self.range.get(), note);
+        self.note.set(note);
+    }
+
+    fn update_base_frequency(&self, master_tune: f32, range: f32, note: f32) {
         self.phase_offset
             .set(self.phase_offset.get() + self.sample_counter.get() * self.base_frequency.get());
-        self.base_frequency.set(master_tune * self.range.get());
-        self.master_tune.set(master_tune);
+        self.base_frequency.set(master_tune * range * note);
         self.sample_counter.set(0.0);
     }
 }
@@ -140,6 +148,25 @@ mod tests {
         assert_float_eq!(0.2, triangle.next().unwrap(), 1e-6);
 
         triangle.set_master_tune(1.5);
+
+        compare!(triangle, samples, 1e-6);
+    }
+
+    #[test]
+    fn play_notes() {
+        let mut triangle = Triangle::new(1.0, 0.0375);
+
+        let samples = [0.9, 0.5, -0.1, -0.7, -0.7, -0.1, 0.5];
+
+        assert_float_eq!(0.0, triangle.next().unwrap(), 1e-6);
+        assert_float_eq!(0.15, triangle.next().unwrap(), 1e-6);
+
+        triangle.set_note(2.0);
+
+        assert_float_eq!(0.3, triangle.next().unwrap(), 1e-6);
+        assert_float_eq!(0.6, triangle.next().unwrap(), 1e-6);
+
+        triangle.set_range(0.075);
 
         compare!(triangle, samples, 1e-6);
     }
