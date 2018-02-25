@@ -105,7 +105,7 @@ impl<T: UsbMidiDevice> UsbMidiController<T> {
         let mut end = 0;
         loop {
             let read = self.device
-                .read_bulk(&mut buf[end..], Duration::from_secs(60))
+                .read_bulk(&mut buf[end..], Duration::from_millis(0))
                 .chain_err(|| "Failed to read from USB device")?;
             end += read;
 
