@@ -21,7 +21,7 @@ impl Synthesizer {
             osc1: Rc::clone(&osc1),
             mixer: Mixer::new(osc1),
             note_selector: NoteSelector::new(),
-            ctrl_in: ctrl_in,
+            ctrl_in,
         }
     }
 

@@ -13,7 +13,7 @@ pub struct Mixer {
 impl Mixer {
     pub fn new(osc1: Rc<Oscillator>) -> Self {
         Self {
-            osc1: osc1,
+            osc1,
             osc1_enabled: Cell::new(false),
             osc1_volume: Cell::new(0.0),
         }

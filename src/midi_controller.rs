@@ -90,7 +90,7 @@ pub struct UsbMidiController<T: UsbMidiDevice> {
 
 impl<T: UsbMidiDevice> UsbMidiController<T> {
     pub fn new(device: T) -> UsbMidiController<T> {
-        UsbMidiController { device: device }
+        UsbMidiController { device }
     }
 
     pub fn listen(

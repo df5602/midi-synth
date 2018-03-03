@@ -271,7 +271,7 @@ impl LocalControl {
     pub fn create(channel: u8, on: bool) -> MidiMessage {
         MidiMessage::LocalControl(LocalControl {
             channel: channel & 0x0F,
-            on: on,
+            on,
         })
     }
 
@@ -633,10 +633,7 @@ pub struct SystemExclusive {
 
 impl SystemExclusive {
     pub fn create(id: SystemExlusiveId, payload: Vec<u8>) -> MidiMessage {
-        MidiMessage::SystemExclusive(SystemExclusive {
-            id: id,
-            payload: payload,
-        })
+        MidiMessage::SystemExclusive(SystemExclusive { id, payload })
     }
 
     pub fn id(&self) -> SystemExlusiveId {
@@ -910,7 +907,7 @@ impl MidiMessage {
         Serializer {
             midi_message: self,
             sysex: None,
-            cable_number: cable_number,
+            cable_number,
             iteration: 0,
             finished: false,
             bytes: [0; 4],
@@ -1084,7 +1081,7 @@ impl UsbMidiParser {
             let code_index_number = input[n] & 0x0F;
             result = match code_index_number {
                 0x8 | 0x9 | 0xa | 0xb | 0xc | 0xd | 0xe => MidiParseStatus::Complete(EventPacket {
-                    cable_number: cable_number,
+                    cable_number,
                     midi_message: MidiMessage::from_bytes(&input[1..]),
                 }),
                 0x4 => self.system_exclusive(&input[n + 1..n + 4], cable_number, false),
@@ -1125,7 +1122,7 @@ impl UsbMidiParser {
             let id = self.system_exclusive_ids[cable_number as usize].get_id_and_reset();
             let result = if self.system_exclusive_started[cable_number as usize] {
                 MidiParseStatus::Complete(EventPacket {
-                    cable_number: cable_number,
+                    cable_number,
                     midi_message: SystemExclusive::create(id, payload),
                 })
             } else {

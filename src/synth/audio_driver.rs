@@ -19,7 +19,7 @@ impl AudioDriver {
         let portaudio = PortAudio::new()?;
 
         Ok(AudioDriver {
-            portaudio: portaudio,
+            portaudio,
             stream: None,
         })
     }

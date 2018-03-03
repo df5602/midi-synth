@@ -63,9 +63,9 @@ impl Dispatcher {
         synth_ctrl_tx: Sender<SynthControl>,
     ) -> Dispatcher {
         Dispatcher {
-            controls_rx: controls_rx,
-            controls_tx: controls_tx,
-            synth_ctrl_tx: synth_ctrl_tx,
+            controls_rx,
+            controls_tx,
+            synth_ctrl_tx,
             master_tune: 64,
             osc1_range: OscillatorRange::Range8ft,
             osc1_enable: true,
