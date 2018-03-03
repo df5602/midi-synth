@@ -17,6 +17,7 @@ pub enum SynthControl {
     Oscillator1Enable(bool),
     Oscillator1Volume(f32),
     NoteOn(f32),
+    NoteOff(f32),
 }
 
 #[derive(PartialEq)]
@@ -98,7 +99,8 @@ impl Dispatcher {
                 },
                 (MidiControllerType::Keyboard, midi_message) => match midi_message {
                     MidiMessage::NoteOn(note_on) => self.note_on(note_on.note_number())?,
-                    _ => continue,
+                    MidiMessage::NoteOff(note_off) => self.note_off(note_off.note_number())?,
+                    _ => {}
                 },
             }
         }
@@ -227,11 +229,23 @@ impl Dispatcher {
         Ok(())
     }
 
-    fn note_on(&mut self, note_number: u8) -> Result<()> {
+    fn calculate_note(&self, note_number: u8) -> f32 {
         let half_steps = f32::from(note_number) - 60.0;
-        let freq = 2.0_f32.powf(half_steps / 12.0);
+        2.0_f32.powf(half_steps / 12.0)
+    }
+
+    fn note_on(&mut self, note_number: u8) -> Result<()> {
+        let freq = self.calculate_note(note_number);
 
         self.synth_ctrl_tx.send(SynthControl::NoteOn(freq))?;
+
+        Ok(())
+    }
+
+    fn note_off(&mut self, note_number: u8) -> Result<()> {
+        let freq = self.calculate_note(note_number);
+
+        self.synth_ctrl_tx.send(SynthControl::NoteOff(freq))?;
 
         Ok(())
     }
@@ -243,6 +257,8 @@ mod tests {
     use std::sync::mpsc;
     use std::thread;
     use std::time::Duration;
+
+    use usb_midi::NoteOff;
 
     macro_rules! setup_dispatcher {
         () => {{
@@ -490,13 +506,36 @@ mod tests {
     }
 
     #[test]
-    fn keyboard_note_60_should_sound_middle_c() {
+    fn keyboard_play_notes() {
         macro_rules! send_and_check {
             ($tx:ident, $note:expr, $midi_rx:ident, $synth_rx:ident, $expected:expr, $eps:expr) => {
                 send_cmd!($tx, NoteOn::create(0, $note, 127), MidiControllerType::Keyboard);
                 expect_no_resp!($midi_rx);
                 let note = match get_resp!($synth_rx) {
                     SynthControl::NoteOn(note) => note,
+                    _ => panic!("wrong variant!"),
+                };
+                assert_float_eq!($expected, note, $eps);
+            };
+        }
+
+        let (midi_cmd_tx, midi_resp_rx, synth_ctrl_rx) = setup_dispatcher!();
+
+        send_and_check!(midi_cmd_tx, 60, midi_resp_rx, synth_ctrl_rx, 1.0, 1e-6);
+        send_and_check!(midi_cmd_tx, 72, midi_resp_rx, synth_ctrl_rx, 2.0, 1e-6);
+        send_and_check!(midi_cmd_tx, 48, midi_resp_rx, synth_ctrl_rx, 0.5, 1e-6);
+        send_and_check!(midi_cmd_tx, 84, midi_resp_rx, synth_ctrl_rx, 4.0, 1e-6);
+        send_and_check!(midi_cmd_tx, 36, midi_resp_rx, synth_ctrl_rx, 0.25, 1e-6);
+    }
+
+    #[test]
+    fn keyboard_release_notes() {
+        macro_rules! send_and_check {
+            ($tx:ident, $note:expr, $midi_rx:ident, $synth_rx:ident, $expected:expr, $eps:expr) => {
+                send_cmd!($tx, NoteOff::create(0, $note, 127), MidiControllerType::Keyboard);
+                expect_no_resp!($midi_rx);
+                let note = match get_resp!($synth_rx) {
+                    SynthControl::NoteOff(note) => note,
                     _ => panic!("wrong variant!"),
                 };
                 assert_float_eq!($expected, note, $eps);
