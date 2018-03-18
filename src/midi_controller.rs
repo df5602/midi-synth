@@ -1,5 +1,6 @@
 use std::time::Duration;
 use std::sync::mpsc::Sender;
+use std::sync::atomic::Ordering;
 
 use libusb;
 use itertools::Itertools;
@@ -104,9 +105,23 @@ impl<T: UsbMidiDevice> UsbMidiController<T> {
         let mut begin = 0;
         let mut end = 0;
         loop {
-            let read = self.device
-                .read_bulk(&mut buf[end..], Duration::from_millis(0))
-                .chain_err(|| "Failed to read from USB device")?;
+            if ::TERMINATION_REQUEST.load(Ordering::Acquire) {
+                return Ok(());
+            }
+
+            let read = match self.device
+                .read_bulk(&mut buf[end..], Duration::from_millis(100))
+            {
+                Ok(read) => read,
+                Err(e) => {
+                    match *e.kind() {
+                        ErrorKind::Usb(::libusb::Error::Timeout) => continue,
+                        _ => 0, // Hack: return value that typechecks, so that we reach return statement
+                                // and can properly return the error (will possibly be fixed with NLL)
+                    };
+                    return Err(e.chain_err(|| "Failed to read from USB device"));
+                }
+            };
             end += read;
 
             while begin < end {

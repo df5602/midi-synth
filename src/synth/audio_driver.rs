@@ -1,3 +1,6 @@
+use std::panic::{self, AssertUnwindSafe};
+use std::sync::atomic::Ordering;
+
 use portaudio;
 use portaudio::{OutputStreamCallbackArgs, PortAudio, Stream};
 
@@ -37,15 +40,27 @@ impl AudioDriver {
             move |OutputStreamCallbackArgs { buffer, frames, .. }| {
                 let mut idx = 0;
 
-                for _ in 0..frames {
-                    let output_value = synthesizer.next_sample();
+                let result = panic::catch_unwind(AssertUnwindSafe(|| {
+                    for _ in 0..frames {
+                        let output_value = synthesizer.next_sample();
+                        buffer[idx] = output_value;
+                        buffer[idx + 1] = output_value;
+                        idx += 2;
+                    }
+                }));
 
-                    buffer[idx] = output_value;
-                    buffer[idx + 1] = output_value;
+                if result.is_err() {
+                    for _ in (idx / 2)..frames {
+                        buffer[idx] = 0.0;
+                        buffer[idx + 1] = 0.0;
+                        idx += 2;
+                    }
 
-                    idx += 2;
+                    ::TERMINATION_REQUEST.store(true, Ordering::Release);
+                    portaudio::Abort
+                } else {
+                    portaudio::Continue
                 }
-                portaudio::Continue
             },
         )?;
 

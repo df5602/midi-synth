@@ -2,6 +2,7 @@ use std::cell::Cell;
 
 use synth::sample_stream::SampleStream;
 
+#[derive(Debug)]
 pub struct Triangle {
     base_frequency: Cell<f32>,
     master_tune: Cell<f32>,
@@ -71,7 +72,12 @@ impl SampleStream for Triangle {
             1.0 - 4.0 * (phase_angle - 0.5)
         };
 
-        assert!(output_value <= 1.0 && output_value >= -1.0);
+        assert!(
+            output_value <= 1.0 && output_value >= -1.0,
+            "Triangle waveform generator: Sample above limit: {}\n\n[{:#?}]\n",
+            output_value,
+            self
+        );
 
         output_value
     }

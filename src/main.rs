@@ -15,6 +15,7 @@ mod synth;
 
 use std::sync::mpsc;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering, ATOMIC_BOOL_INIT};
 use std::thread;
 
 use midi_controller::{AkaiAPC40MkII, MAudioKeystation49e, MidiControllerType, UsbMidiController};
@@ -26,6 +27,8 @@ use synth::synthesizer::Synthesizer;
 use errors::*;
 use errors::ErrorKind::*;
 use error_chain::ChainedError;
+
+pub static TERMINATION_REQUEST: AtomicBool = ATOMIC_BOOL_INIT;
 
 lazy_static! {
     static ref USB_CONTEXT: libusb::Context = match libusb::Context::new() {
@@ -53,8 +56,9 @@ fn run() -> Result<()> {
         },
     };
 
-    let apc40 = Arc::new(UsbMidiController::new(AkaiAPC40MkII::open(&USB_CONTEXT)
-        .chain_err(|| "Could not open Akai APC40 MkII")?));
+    let apc40 = Arc::new(
+        UsbMidiController::new(AkaiAPC40MkII::open(&USB_CONTEXT).chain_err(|| "Could not open Akai APC40 MkII")?),
+    );
 
     // Create Synthesizer
     let synthesizer = Synthesizer::new(synth_ctrl_rx);
@@ -66,14 +70,19 @@ fn run() -> Result<()> {
     // Setup threads that listen to MIDI events from the controllers
     if let Some(keystation) = keystation {
         let keyboard_tx = device2host_tx.clone();
-        let keyboard_thread =
-            thread::spawn(move || keystation.listen(&keyboard_tx, MidiControllerType::Keyboard));
+        let keyboard_thread = thread::spawn(move || {
+            let result = keystation.listen(&keyboard_tx, MidiControllerType::Keyboard);
+            TERMINATION_REQUEST.store(true, Ordering::Release);
+            result
+        });
         threads.push(keyboard_thread);
     }
 
     let apc40_cloned = apc40.clone();
     let controls_rx_thread = thread::spawn(move || {
-        apc40_cloned.listen(&device2host_tx, MidiControllerType::ControlPanel)
+        let result = apc40_cloned.listen(&device2host_tx, MidiControllerType::ControlPanel);
+        TERMINATION_REQUEST.store(true, Ordering::Release);
+        result
     });
     threads.push(controls_rx_thread);
 
@@ -94,14 +103,18 @@ fn run() -> Result<()> {
     let dispatcher_thread = thread::spawn(move || dispatcher.start());
     threads.push(dispatcher_thread);
 
+    let mut result = Ok(());
     for thread in threads {
         match thread.join() {
-            Ok(res) => res?,
+            // Do not use ? operator here: we want to join all threads before returning from this function
+            Ok(res) => if res.is_err() {
+                result = res;
+            },
             Err(e) => eprintln!("{:?}", e),
         }
     }
 
-    Ok(())
+    result
 }
 
 fn main() {
