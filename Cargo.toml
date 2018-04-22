@@ -7,6 +7,6 @@ authors = ["df5602 <dominik@fankhausers.ch>"]
 libusb = "*"
 itertools = "*"
 error-chain = "*"
-lazy_static = "*"
 portaudio = "*"
 ctrlc = { version = "*", features = ["termination"] }
+crossbeam = "*"
