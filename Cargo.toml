@@ -9,3 +9,4 @@ itertools = "*"
 error-chain = "*"
 lazy_static = "*"
 portaudio = "*"
+ctrlc = { version = "*", features = ["termination"] }

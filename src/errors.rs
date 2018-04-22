@@ -5,6 +5,7 @@ error_chain!{
         MidiMessageRxChannel(::std::sync::mpsc::SendError<(::usb_midi::MidiMessage, ::midi_controller::MidiControllerType)>);
         MidiMessageTxChannel(::std::sync::mpsc::SendError<::usb_midi::MidiMessage>);
         SynthControlChannel(::std::sync::mpsc::SendError<::synth::dispatcher::SynthControl>);
+        CtrlCError(::ctrlc::Error);
     }
 
     errors {

@@ -1,3 +1,4 @@
+extern crate ctrlc;
 extern crate itertools;
 extern crate libusb;
 extern crate portaudio;
@@ -38,6 +39,12 @@ lazy_static! {
 }
 
 fn run() -> Result<()> {
+    // Setup signal handler
+    ctrlc::set_handler(|| {
+        println!("\nTermination requested. Stopping now...");
+        TERMINATION_REQUEST.store(true, Ordering::Release);
+    })?;
+
     let mut threads = vec![];
 
     let (device2host_tx, device2host_rx) = mpsc::channel();
