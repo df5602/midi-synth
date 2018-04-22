@@ -1,12 +1,12 @@
-use std::time::Duration;
-use std::sync::mpsc::Sender;
 use std::sync::atomic::Ordering;
+use std::sync::mpsc::Sender;
+use std::time::Duration;
 
-use libusb;
 use itertools::Itertools;
+use libusb;
 
-use errors::*;
 use errors::ErrorKind::{MidiControllerNotConnected, MidiOperationNotSupported};
+use errors::*;
 
 use usb_midi::{MidiMessage, MidiParseStatus, SystemExclusive, SystemExlusiveId, UsbMidiParser};
 

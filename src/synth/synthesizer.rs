@@ -1,11 +1,11 @@
-use std::sync::mpsc::Receiver;
-use std::rc::Rc;
 use std::f32;
+use std::rc::Rc;
+use std::sync::mpsc::Receiver;
 
-use synth::oscillator::Oscillator;
-use synth::mixer::Mixer;
-use synth::sample_stream::SampleStream;
 use synth::dispatcher::SynthControl;
+use synth::mixer::Mixer;
+use synth::oscillator::Oscillator;
+use synth::sample_stream::SampleStream;
 
 pub struct Synthesizer {
     osc1: Rc<Oscillator>,
@@ -126,7 +126,12 @@ mod tests {
         ($left:expr, $right:expr, $eps:expr) => {{
             let left = $left;
             let right = $right;
-            assert!((left - right).abs() < $eps, "Expected: {}, got: {}", left, right);
+            assert!(
+                (left - right).abs() < $eps,
+                "Expected: {}, got: {}",
+                left,
+                right
+            );
         }};
     }
 

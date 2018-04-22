@@ -93,7 +93,12 @@ mod tests {
         ($left:expr, $right:expr, $eps:expr) => {{
             let left = $left;
             let right = $right;
-            assert!((left - right).abs() < $eps, "Expected: {}, got: {}", left, right);
+            assert!(
+                (left - right).abs() < $eps,
+                "Expected: {}, got: {}",
+                left,
+                right
+            );
         }};
     }
 
@@ -105,7 +110,10 @@ mod tests {
                 if i == $precalculated.len() {
                     break;
                 }
-                println!("Precalculated: {}, generated: {}", $precalculated[i], sample);
+                println!(
+                    "Precalculated: {}, generated: {}",
+                    $precalculated[i], sample
+                );
                 assert_float_eq!($precalculated[i], sample, $eps);
                 i += 1;
             }

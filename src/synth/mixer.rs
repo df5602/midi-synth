@@ -1,8 +1,8 @@
-use std::rc::Rc;
 use std::cell::Cell;
+use std::rc::Rc;
 
-use synth::sample_stream::SampleStream;
 use synth::oscillator::Oscillator;
+use synth::sample_stream::SampleStream;
 
 pub struct Mixer {
     osc1: Rc<Oscillator>,
@@ -52,7 +52,12 @@ mod tests {
         ($left:expr, $right:expr, $eps:expr) => {{
             let left = $left;
             let right = $right;
-            assert!((left - right).abs() < $eps, "Expected: {}, got: {}", left, right);
+            assert!(
+                (left - right).abs() < $eps,
+                "Expected: {}, got: {}",
+                left,
+                right
+            );
         }};
     }
 

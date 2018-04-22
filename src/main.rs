@@ -10,30 +10,30 @@ extern crate lazy_static;
 
 mod errors;
 mod midi_controller;
-mod usb_midi;
 mod synth;
+mod usb_midi;
 
-use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering, ATOMIC_BOOL_INIT};
+use std::sync::mpsc;
 use std::thread;
 
 use midi_controller::{AkaiAPC40MkII, MAudioKeystation49e, MidiControllerType, UsbMidiController};
 
-use synth::dispatcher::Dispatcher;
 use synth::audio_driver::AudioDriver;
+use synth::dispatcher::Dispatcher;
 use synth::synthesizer::Synthesizer;
 
-use errors::*;
-use errors::ErrorKind::*;
 use error_chain::ChainedError;
+use errors::ErrorKind::*;
+use errors::*;
 
 pub static TERMINATION_REQUEST: AtomicBool = ATOMIC_BOOL_INIT;
 
 lazy_static! {
     static ref USB_CONTEXT: libusb::Context = match libusb::Context::new() {
         Ok(context) => context,
-        Err(e) => panic!("Failed to initialize libusb: {}", e)
+        Err(e) => panic!("Failed to initialize libusb: {}", e),
     };
 }
 

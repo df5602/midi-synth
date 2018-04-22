@@ -1,9 +1,9 @@
-use std::sync::mpsc::{Receiver, Sender};
 use std::f32;
+use std::sync::mpsc::{Receiver, Sender};
 
-use usb_midi::{ControlChange, MidiMessage, NoteOn};
 use midi_controller::MidiControllerType;
 use synth::audio_driver::SAMPLE_RATE;
+use usb_midi::{ControlChange, MidiMessage, NoteOn};
 
 use errors::Result;
 
@@ -305,7 +305,12 @@ mod tests {
         ($left:expr, $right:expr, $eps:expr) => {{
             let left = $left;
             let right = $right;
-            assert!((left - right).abs() < $eps, "Expected: {}, got: {}", left, right);
+            assert!(
+                (left - right).abs() < $eps,
+                "Expected: {}, got: {}",
+                left,
+                right
+            );
         }};
     }
 
@@ -313,7 +318,11 @@ mod tests {
     fn master_tune() {
         macro_rules! send_and_check {
             ($tx:ident, $rx_midi:ident, $val:expr, $rx_synth:ident, $tune:expr, $eps:expr) => {
-                send_cmd!($tx, ControlChange::create(0, 0x31, $val), MidiControllerType::ControlPanel);
+                send_cmd!(
+                    $tx,
+                    ControlChange::create(0, 0x31, $val),
+                    MidiControllerType::ControlPanel
+                );
                 expect_resp!($rx_midi, ControlChange::create(0, 0x31, $val));
 
                 let tune = get_resp!($rx_synth);
@@ -366,12 +375,19 @@ mod tests {
     #[test]
     fn oscillator1_range_valid_positions() {
         macro_rules! send_and_check {
-            ($tx:ident, $tx_val:expr, $rx_midi:ident, $rx_val:expr, $rx_synth:ident, $range:expr) => {
-                send_cmd!($tx, ControlChange::create(0, 0x30, $tx_val), MidiControllerType::ControlPanel);
+            (
+                $tx:ident, $tx_val:expr, $rx_midi:ident, $rx_val:expr, $rx_synth:ident, $range:expr
+            ) => {
+                send_cmd!(
+                    $tx,
+                    ControlChange::create(0, 0x30, $tx_val),
+                    MidiControllerType::ControlPanel
+                );
                 expect_resp!($rx_midi, ControlChange::create(0, 0x30, $rx_val));
                 expect_resp!(
                     $rx_synth,
-                    SynthControl::Oscillator1Range((f64::from($range) / SAMPLE_RATE) as f32));
+                    SynthControl::Oscillator1Range((f64::from($range) / SAMPLE_RATE) as f32)
+                );
             };
         }
 
@@ -388,7 +404,11 @@ mod tests {
     fn oscillator1_range_invalid_positions() {
         macro_rules! send_and_check_no_resp {
             ($tx:ident, $val:expr, $rx_midi:ident, $rx_synth:ident) => {
-                send_cmd!($tx, ControlChange::create(0, 0x30, $val), MidiControllerType::ControlPanel);
+                send_cmd!(
+                    $tx,
+                    ControlChange::create(0, 0x30, $val),
+                    MidiControllerType::ControlPanel
+                );
                 expect_no_resp!($rx_midi);
                 expect_no_resp!($rx_synth);
             };
@@ -509,7 +529,11 @@ mod tests {
     fn keyboard_play_notes() {
         macro_rules! send_and_check {
             ($tx:ident, $note:expr, $midi_rx:ident, $synth_rx:ident, $expected:expr, $eps:expr) => {
-                send_cmd!($tx, NoteOn::create(0, $note, 127), MidiControllerType::Keyboard);
+                send_cmd!(
+                    $tx,
+                    NoteOn::create(0, $note, 127),
+                    MidiControllerType::Keyboard
+                );
                 expect_no_resp!($midi_rx);
                 let note = match get_resp!($synth_rx) {
                     SynthControl::NoteOn(note) => note,
@@ -532,7 +556,11 @@ mod tests {
     fn keyboard_release_notes() {
         macro_rules! send_and_check {
             ($tx:ident, $note:expr, $midi_rx:ident, $synth_rx:ident, $expected:expr, $eps:expr) => {
-                send_cmd!($tx, NoteOff::create(0, $note, 127), MidiControllerType::Keyboard);
+                send_cmd!(
+                    $tx,
+                    NoteOff::create(0, $note, 127),
+                    MidiControllerType::Keyboard
+                );
                 expect_no_resp!($midi_rx);
                 let note = match get_resp!($synth_rx) {
                     SynthControl::NoteOff(note) => note,

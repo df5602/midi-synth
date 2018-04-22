@@ -1,6 +1,6 @@
+use itertools::Itertools;
 use std::fmt;
 use std::mem;
-use itertools::Itertools;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct NoteOn {
