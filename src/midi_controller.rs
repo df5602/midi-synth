@@ -115,7 +115,7 @@ impl<T: UsbMidiDevice> UsbMidiController<T> {
                 Ok(read) => read,
                 Err(e) => {
                     match *e.kind() {
-                        ErrorKind::Usb(::libusb::Error::Timeout) => continue,
+                        ErrorKind::UsbError(::libusb::Error::Timeout) => continue,
                         _ => 0, // Hack: return value that typechecks, so that we reach return statement
                                 // and can properly return the error (will possibly be fixed with NLL)
                     };
