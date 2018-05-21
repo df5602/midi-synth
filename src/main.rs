@@ -17,9 +17,9 @@ mod midi_controller;
 mod synth;
 mod usb_midi;
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering, ATOMIC_BOOL_INIT};
 use std::sync::mpsc;
+use std::sync::Arc;
 
 use midi_controller::{AkaiAPC40MkII, MAudioKeystation49e, MidiControllerType, UsbMidiController};
 
@@ -64,9 +64,9 @@ fn run() -> Result<()> {
             },
         };
 
-        let apc40 = Arc::new(
-            UsbMidiController::new(AkaiAPC40MkII::open(&usb_context).chain_err(|| "Could not open Akai APC40 MkII")?),
-        );
+        let apc40 = Arc::new(UsbMidiController::new(
+            AkaiAPC40MkII::open(&usb_context).chain_err(|| "Could not open Akai APC40 MkII")?
+        ));
 
         // Create Synthesizer
         let synthesizer = Synthesizer::new(synth_ctrl_rx);
