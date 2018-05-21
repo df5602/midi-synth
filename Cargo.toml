@@ -10,3 +10,6 @@ error-chain = "*"
 portaudio = "*"
 ctrlc = { version = "*", features = ["termination"] }
 crossbeam = "*"
+
+[features]
+benchmarks = []

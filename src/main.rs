@@ -1,3 +1,8 @@
+#![cfg_attr(feature = "benchmarks", feature(test))]
+
+#[cfg(feature = "benchmarks")]
+extern crate test;
+
 extern crate crossbeam;
 extern crate ctrlc;
 extern crate itertools;

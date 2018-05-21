@@ -49,70 +49,116 @@ impl Synthesizer {
     }
 }
 
+const NUMBER_OF_NOTES: usize = 32;
+
 #[derive(Copy, Clone)]
 struct Note {
-    on: bool,
     note: f32,
 }
 
 struct NoteSelector {
-    notes: [Note; 32],
+    notes: [Note; NUMBER_OF_NOTES],
     current_note: f32,
+    number_of_notes: usize,
 }
 
+/// Selects the lowest of the currently playing notes (low note priority).
+///
+/// Notes are stored in a binary heap for performance reasons, i.e. the lowest
+/// note is at the root (index 1).
 impl NoteSelector {
     fn new() -> Self {
         Self {
             notes: [Note {
-                on: false,
-                note: 0.0,
-            }; 32],
+                note: f32::INFINITY,
+            }; NUMBER_OF_NOTES],
             current_note: f32::INFINITY,
+            number_of_notes: 0,
         }
     }
 
+    /// Inserts new note, returns the lowest note.
     fn turn_on_note(&mut self, note: f32) -> f32 {
-        for i in 0..self.notes.len() {
-            if !self.notes[i].on {
-                self.notes[i].on = true;
-                self.notes[i].note = note;
-                break;
-            }
+        if self.number_of_notes + 1 < NUMBER_OF_NOTES {
+            self.number_of_notes += 1;
         }
 
-        self.play_lowest_note()
+        // Insert new note at next free slot (or reuse last slot if no free slots)
+        self.notes[self.number_of_notes].note = note;
+
+        let mut pos = self.number_of_notes;
+        let mut parent = pos / 2;
+
+        // Min Heap: Swap elements until parent node is smaller or equal all its child nodes
+        while parent > 0 {
+            if self.notes[parent].note > self.notes[pos].note {
+                self.notes.swap(parent, pos);
+            } else {
+                break;
+            }
+
+            pos = parent;
+            parent = pos / 2;
+        }
+
+        // Lowest note is always stored at index 1
+        self.current_note = self.notes[1].note;
+        self.current_note
     }
 
+    /// Removes note from list of playing notes, returns lowest note.
     fn turn_off_note(&mut self, note: f32) -> f32 {
-        for i in 0..self.notes.len() {
-            if self.notes[i].on && ((note - self.notes[i].note).abs() < 1e-6) {
-                self.notes[i].on = false;
-                self.notes[i].note = 0.0;
+        // Perform linear search for note to turn off
+        let mut pos = 0;
+        for i in 1..self.number_of_notes + 1 {
+            if (note - self.notes[i].note).abs() < 1e-6 {
+                pos = i;
                 break;
             }
         }
 
-        self.play_lowest_note()
-    }
+        // If found...
+        if pos > 0 {
+            // .. swap note to remove with note at last position
+            self.notes[pos].note = self.notes[self.number_of_notes].note;
+            self.notes[self.number_of_notes].note = f32::INFINITY;
+            self.number_of_notes -= 1;
 
-    fn play_lowest_note(&mut self) -> f32 {
-        let current = self.current_note;
-        let mut lowest = f32::INFINITY;
+            let mut left_child = 2 * pos;
+            let mut right_child = left_child + 1;
 
-        for i in 0..self.notes.len() {
-            if self.notes[i].on {
-                lowest = if self.notes[i].note < lowest {
-                    self.notes[i].note
+            // Min heap: Swap parent node with smaller of its children, until parent node is smaller
+            // or equal than both its child nodes
+            loop {
+                if right_child >= NUMBER_OF_NOTES {
+                    break;
+                }
+
+                if self.notes[pos].note <= self.notes[left_child].note
+                    && self.notes[pos].note <= self.notes[right_child].note
+                {
+                    break;
+                }
+
+                if self.notes[left_child].note <= self.notes[right_child].note {
+                    self.notes.swap(pos, left_child);
+                    pos = left_child;
                 } else {
-                    lowest
-                };
+                    self.notes.swap(pos, right_child);
+                    pos = right_child;
+                }
+
+                left_child = 2 * pos;
+                right_child = left_child + 1;
             }
         }
 
-        self.current_note = if lowest < f32::INFINITY {
-            lowest
+        // Lowest note is always stored at index 1 (expect if no note is playing), in that
+        // case return the currently playing note
+        self.current_note = if self.notes[1].note < f32::INFINITY {
+            self.notes[1].note
         } else {
-            current
+            self.current_note
         };
         self.current_note
     }
@@ -197,5 +243,206 @@ mod tests {
 
         current_note = note_selector.turn_off_note(0.8);
         assert_float_eq!(1.5, current_note, 1e-6);
+    }
+}
+
+#[cfg(all(feature = "benchmarks", test))]
+mod bench {
+    use super::*;
+    use test::Bencher;
+
+    #[bench]
+    fn few_notes_1(b: &mut Bencher) {
+        let mut note_selector = NoteSelector::new();
+
+        note_selector.turn_on_note(2.0);
+        note_selector.turn_on_note(1.6);
+        note_selector.turn_on_note(1.2);
+
+        b.iter(|| {
+            note_selector.turn_on_note(0.8);
+
+            note_selector.turn_off_note(0.8);
+        })
+    }
+
+    #[bench]
+    fn few_notes_2(b: &mut Bencher) {
+        let mut note_selector = NoteSelector::new();
+
+        note_selector.turn_on_note(2.0);
+        note_selector.turn_on_note(1.6);
+        note_selector.turn_on_note(1.2);
+
+        b.iter(|| {
+            note_selector.turn_on_note(3.0);
+
+            note_selector.turn_off_note(3.0);
+        })
+    }
+
+    #[bench]
+    fn filled_one_quarter_1(b: &mut Bencher) {
+        let mut note_selector = NoteSelector::new();
+
+        for i in 0..NUMBER_OF_NOTES / 4 {
+            note_selector.turn_on_note(((i + 1) as f32) * 0.5);
+        }
+
+        b.iter(|| {
+            note_selector.turn_on_note(0.2);
+
+            note_selector.turn_off_note(0.2);
+        })
+    }
+
+    #[bench]
+    fn filled_one_quarter_2(b: &mut Bencher) {
+        let mut note_selector = NoteSelector::new();
+
+        for i in 0..NUMBER_OF_NOTES / 4 {
+            note_selector.turn_on_note(((i + 1) as f32) * 0.5);
+        }
+
+        b.iter(|| {
+            note_selector.turn_on_note(40.0);
+
+            note_selector.turn_off_note(40.0);
+        })
+    }
+
+    #[bench]
+    fn filled_half_1(b: &mut Bencher) {
+        let mut note_selector = NoteSelector::new();
+
+        for i in 0..NUMBER_OF_NOTES / 2 {
+            note_selector.turn_on_note(((i + 1) as f32) * 0.5);
+        }
+
+        b.iter(|| {
+            note_selector.turn_on_note(0.2);
+
+            note_selector.turn_off_note(0.2);
+        })
+    }
+
+    #[bench]
+    fn filled_half_2(b: &mut Bencher) {
+        let mut note_selector = NoteSelector::new();
+
+        for i in 0..NUMBER_OF_NOTES / 2 {
+            note_selector.turn_on_note(((i + 1) as f32) * 0.5);
+        }
+
+        b.iter(|| {
+            note_selector.turn_on_note(40.0);
+
+            note_selector.turn_off_note(40.0);
+        })
+    }
+
+    #[bench]
+    fn filled_half_3(b: &mut Bencher) {
+        let mut note_selector = NoteSelector::new();
+
+        for i in 0..NUMBER_OF_NOTES / 2 {
+            note_selector.turn_on_note(((i + 1) as f32) * 0.5);
+        }
+
+        b.iter(|| {
+            note_selector.turn_on_note(4.1);
+
+            note_selector.turn_off_note(4.1);
+        })
+    }
+
+    #[bench]
+    fn filled_three_quarters_1(b: &mut Bencher) {
+        let mut note_selector = NoteSelector::new();
+
+        for i in 0..3 * NUMBER_OF_NOTES / 4 {
+            note_selector.turn_on_note(((i + 1) as f32) * 0.5);
+        }
+
+        b.iter(|| {
+            note_selector.turn_on_note(0.2);
+
+            note_selector.turn_off_note(0.2);
+        })
+    }
+
+    #[bench]
+    fn filled_three_quarters_2(b: &mut Bencher) {
+        let mut note_selector = NoteSelector::new();
+
+        for i in 0..3 * NUMBER_OF_NOTES / 4 {
+            note_selector.turn_on_note(((i + 1) as f32) * 0.5);
+        }
+
+        b.iter(|| {
+            note_selector.turn_on_note(40.0);
+
+            note_selector.turn_off_note(40.0);
+        })
+    }
+
+    #[bench]
+    fn filled_three_quarters_3(b: &mut Bencher) {
+        let mut note_selector = NoteSelector::new();
+
+        for i in 0..3 * NUMBER_OF_NOTES / 4 {
+            note_selector.turn_on_note(((i + 1) as f32) * 0.5);
+        }
+
+        b.iter(|| {
+            note_selector.turn_on_note(6.2);
+
+            note_selector.turn_off_note(6.2);
+        })
+    }
+
+    #[bench]
+    fn many_notes_1(b: &mut Bencher) {
+        let mut note_selector = NoteSelector::new();
+
+        for i in 0..NUMBER_OF_NOTES - 1 {
+            note_selector.turn_on_note(((i + 1) as f32) * 0.5);
+        }
+
+        b.iter(|| {
+            note_selector.turn_on_note(0.2);
+
+            note_selector.turn_off_note(0.2);
+        })
+    }
+
+    #[bench]
+    fn many_notes_2(b: &mut Bencher) {
+        let mut note_selector = NoteSelector::new();
+
+        for i in 0..NUMBER_OF_NOTES - 1 {
+            note_selector.turn_on_note(((i + 1) as f32) * 0.5);
+        }
+
+        b.iter(|| {
+            note_selector.turn_on_note(40.0);
+
+            note_selector.turn_off_note(40.0);
+        })
+    }
+
+    #[bench]
+    fn many_notes_3(b: &mut Bencher) {
+        let mut note_selector = NoteSelector::new();
+
+        for i in 0..NUMBER_OF_NOTES - 1 {
+            note_selector.turn_on_note(((i + 1) as f32) * 0.5);
+        }
+
+        b.iter(|| {
+            note_selector.turn_on_note(8.2);
+
+            note_selector.turn_off_note(8.2);
+        })
     }
 }
