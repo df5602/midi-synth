@@ -1,2 +1,4 @@
 /target/
+/rls/
+/benchmark-data/
 **/*.rs.bk
