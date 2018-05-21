@@ -57,8 +57,13 @@ impl SampleStream for Triangle {
         let mut sample_counter = self.sample_counter.get();
         let mut phase_angle = self.phase_offset.get() + sample_counter * self.base_frequency.get();
 
-        if phase_angle >= 1.0 {
+        let mut wraparound = false;
+        while phase_angle >= 1.0 {
             phase_angle -= 1.0;
+            wraparound = true;
+        }
+
+        if wraparound {
             sample_counter = 0.0;
             self.phase_offset.set(phase_angle);
         }
@@ -139,7 +144,7 @@ mod tests {
         let mut triangle = Triangle::new(1.0, 0.0375);
 
         let samples = [
-            0.3, 0.6, 0.9, 0.8, 0.5, 0.2, -0.1, -0.4, -0.7, -1.0, -0.7, -0.4, -0.1, 0.2
+            0.3, 0.6, 0.9, 0.8, 0.5, 0.2, -0.1, -0.4, -0.7, -1.0, -0.7, -0.4, -0.1, 0.2,
         ];
 
         assert_float_eq!(0.0, triangle.next().unwrap(), 1e-6);
@@ -155,7 +160,7 @@ mod tests {
         let mut triangle = Triangle::new(1.0, 0.05);
 
         let samples = [
-            0.4, 0.7, 1.0, 0.7, 0.4, 0.1, -0.2, -0.5, -0.8, -0.9, -0.6, -0.3, 0.0
+            0.4, 0.7, 1.0, 0.7, 0.4, 0.1, -0.2, -0.5, -0.8, -0.9, -0.6, -0.3, 0.0,
         ];
 
         assert_float_eq!(0.0, triangle.next().unwrap(), 1e-6);
