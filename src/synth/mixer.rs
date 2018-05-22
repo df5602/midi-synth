@@ -48,19 +48,6 @@ iterator!(Mixer);
 mod tests {
     use super::*;
 
-    macro_rules! assert_float_eq {
-        ($left:expr, $right:expr, $eps:expr) => {{
-            let left = $left;
-            let right = $right;
-            assert!(
-                (left - right).abs() < $eps,
-                "Expected: {}, got: {}",
-                left,
-                right
-            );
-        }};
-    }
-
     #[test]
     fn enable_oscillator1() {
         let osc1 = Rc::new(Oscillator::new(1.0, 0.0375));

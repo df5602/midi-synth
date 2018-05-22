@@ -12,6 +12,10 @@ extern crate portaudio;
 #[macro_use]
 extern crate error_chain;
 
+#[cfg(test)]
+#[macro_use]
+mod testing;
+
 mod errors;
 mod midi_controller;
 mod synth;
