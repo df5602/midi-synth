@@ -2,14 +2,18 @@ use std::f32;
 use std::rc::Rc;
 use std::sync::mpsc::Receiver;
 
+use synth::contour::loudness_contour::LoudnessContour;
 use synth::dispatcher::SynthControl;
 use synth::mixer::Mixer;
 use synth::oscillator::Oscillator;
 use synth::sample_stream::SampleStream;
 
+type LoudnessContourInput = Rc<Mixer>;
+
 pub struct Synthesizer {
     osc1: Rc<Oscillator>,
-    mixer: Mixer,
+    mixer: Rc<Mixer>,
+    loudness_contour: LoudnessContour<LoudnessContourInput>,
     note_selector: NoteSelector,
     ctrl_in: Receiver<SynthControl>,
 }
@@ -17,9 +21,11 @@ pub struct Synthesizer {
 impl Synthesizer {
     pub fn new(ctrl_in: Receiver<SynthControl>) -> Self {
         let osc1 = Rc::new(Oscillator::new(1.0, 0.0));
+        let mixer = Rc::new(Mixer::new(Rc::clone(&osc1)));
         Self {
-            osc1: Rc::clone(&osc1),
-            mixer: Mixer::new(osc1),
+            osc1,
+            mixer: Rc::clone(&mixer),
+            loudness_contour: LoudnessContour::new(mixer),
             note_selector: NoteSelector::new(),
             ctrl_in,
         }
@@ -27,10 +33,15 @@ impl Synthesizer {
 
     fn turn_on_note(&mut self, note: f32) {
         self.osc1.set_note(self.note_selector.turn_on_note(note));
+        self.loudness_contour.trigger_on();
     }
 
     fn turn_off_note(&mut self, note: f32) {
-        self.osc1.set_note(self.note_selector.turn_off_note(note));
+        if let Some(note) = self.note_selector.turn_off_note(note) {
+            self.osc1.set_note(note);
+        } else {
+            self.loudness_contour.trigger_off();
+        }
     }
 
     pub fn next_sample(&mut self) -> f32 {
@@ -45,7 +56,7 @@ impl Synthesizer {
             }
         }
 
-        self.mixer.next_sample()
+        self.loudness_contour.next_sample()
     }
 }
 
@@ -58,7 +69,6 @@ struct Note {
 
 struct NoteSelector {
     notes: [Note; NUMBER_OF_NOTES],
-    current_note: f32,
     number_of_notes: usize,
 }
 
@@ -72,7 +82,6 @@ impl NoteSelector {
             notes: [Note {
                 note: f32::INFINITY,
             }; NUMBER_OF_NOTES],
-            current_note: f32::INFINITY,
             number_of_notes: 0,
         }
     }
@@ -102,12 +111,11 @@ impl NoteSelector {
         }
 
         // Lowest note is always stored at index 1
-        self.current_note = self.notes[1].note;
-        self.current_note
+        self.notes[1].note
     }
 
     /// Removes note from list of playing notes, returns lowest note.
-    fn turn_off_note(&mut self, note: f32) -> f32 {
+    fn turn_off_note(&mut self, note: f32) -> Option<f32> {
         // Perform linear search for note to turn off
         let mut pos = 0;
         for i in 1..self.number_of_notes + 1 {
@@ -153,14 +161,12 @@ impl NoteSelector {
             }
         }
 
-        // Lowest note is always stored at index 1 (expect if no note is playing), in that
-        // case return the currently playing note
-        self.current_note = if self.notes[1].note < f32::INFINITY {
-            self.notes[1].note
+        // Lowest note is always stored at index 1 (except if no note is playing)
+        if self.notes[1].note < f32::INFINITY {
+            Some(self.notes[1].note)
         } else {
-            self.current_note
-        };
-        self.current_note
+            None
+        }
     }
 }
 
@@ -194,11 +200,11 @@ mod tests {
         let mut current_note = note_selector.turn_on_note(1.2);
         assert_float_eq!(0.8, current_note, 1e-6);
 
-        current_note = note_selector.turn_off_note(0.8);
+        current_note = note_selector.turn_off_note(0.8).unwrap();
         assert_float_eq!(1.2, current_note, 1e-6);
 
-        current_note = note_selector.turn_off_note(1.2);
-        assert_float_eq!(1.2, current_note, 1e-6);
+        let current_note = note_selector.turn_off_note(1.2);
+        assert_eq!(None, current_note);
     }
 
     #[test]
@@ -209,11 +215,11 @@ mod tests {
         let mut current_note = note_selector.turn_on_note(1.2);
         assert_float_eq!(0.8, current_note, 1e-6);
 
-        current_note = note_selector.turn_off_note(1.2);
+        current_note = note_selector.turn_off_note(1.2).unwrap();
         assert_float_eq!(0.8, current_note, 1e-6);
 
-        current_note = note_selector.turn_off_note(0.8);
-        assert_float_eq!(0.8, current_note, 1e-6);
+        let current_note = note_selector.turn_off_note(0.8);
+        assert_eq!(None, current_note);
     }
 
     #[test]
@@ -225,11 +231,11 @@ mod tests {
         let mut current_note = note_selector.turn_on_note(1.5);
         assert_float_eq!(0.8, current_note, 1e-6);
 
-        current_note = note_selector.turn_off_note(1.2);
-        assert_float_eq!(0.8, current_note, 1e-6);
+        current_note = note_selector.turn_off_note(1.2).unwrap();
+        assert_eq!(0.8, current_note);
 
-        current_note = note_selector.turn_off_note(0.8);
-        assert_float_eq!(1.5, current_note, 1e-6);
+        current_note = note_selector.turn_off_note(0.8).unwrap();
+        assert_eq!(1.5, current_note);
     }
 }
 

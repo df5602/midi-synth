@@ -48,9 +48,7 @@ impl Triangle {
 }
 
 impl SampleStream for Triangle {
-    type Sample = f32;
-
-    fn next_sample(&self) -> Self::Sample {
+    fn next_sample(&self) -> f32 {
         // Calculate phase angle
         // (Do it this seemingly more complicated than necessary way, since this seems to minimize
         // floating point errors)

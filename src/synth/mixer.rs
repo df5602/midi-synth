@@ -31,9 +31,7 @@ impl Mixer {
 }
 
 impl SampleStream for Mixer {
-    type Sample = f32;
-
-    fn next_sample(&self) -> Self::Sample {
+    fn next_sample(&self) -> f32 {
         if self.osc1_enabled.get() {
             self.osc1.next_sample() * self.osc1_volume.get()
         } else {

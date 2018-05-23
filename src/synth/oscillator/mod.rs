@@ -28,9 +28,7 @@ impl Oscillator {
 }
 
 impl SampleStream for Oscillator {
-    type Sample = f32;
-
-    fn next_sample(&self) -> Self::Sample {
+    fn next_sample(&self) -> f32 {
         self.triangle.next_sample()
     }
 }
