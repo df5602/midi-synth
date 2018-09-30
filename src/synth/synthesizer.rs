@@ -118,7 +118,7 @@ impl NoteSelector {
     fn turn_off_note(&mut self, note: f32) -> Option<f32> {
         // Perform linear search for note to turn off
         let mut pos = 0;
-        for i in 1..self.number_of_notes + 1 {
+        for i in 1..=self.number_of_notes {
             if (note - self.notes[i].note).abs() < 1e-6 {
                 pos = i;
                 break;
