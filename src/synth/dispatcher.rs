@@ -80,15 +80,18 @@ impl Dispatcher {
         while let Ok((midi_message, source)) = self.controls_rx.recv() {
             match (source, midi_message) {
                 (MidiControllerType::ControlPanel, midi_message) => match midi_message {
-                    MidiMessage::ControlChange(control_change) => match (
-                        control_change.control_number(),
-                        control_change.channel(),
-                    ) {
-                        (0x07, 0) => self.update_oscillator_volume(control_change.control_value())?,
-                        (0x30, _) => self.update_oscillator_range(control_change.control_value())?,
-                        (0x31, _) => self.update_master_tune(control_change.control_value())?,
-                        _ => {}
-                    },
+                    MidiMessage::ControlChange(control_change) => {
+                        match (control_change.control_number(), control_change.channel()) {
+                            (0x07, 0) => {
+                                self.update_oscillator_volume(control_change.control_value())?
+                            }
+                            (0x30, _) => {
+                                self.update_oscillator_range(control_change.control_value())?
+                            }
+                            (0x31, _) => self.update_master_tune(control_change.control_value())?,
+                            _ => {}
+                        }
+                    }
                     MidiMessage::NoteOn(note_on) => {
                         match (note_on.note_number(), note_on.channel()) {
                             (0x33, 0) => self.update_oscillator_enable()?,

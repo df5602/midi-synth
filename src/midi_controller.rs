@@ -109,7 +109,8 @@ impl<T: UsbMidiDevice> UsbMidiController<T> {
                 return Ok(());
             }
 
-            let read = match self.device
+            let read = match self
+                .device
                 .read_bulk(&mut buf[end..], Duration::from_millis(100))
             {
                 Ok(read) => read,

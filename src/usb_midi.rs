@@ -1008,11 +1008,13 @@ impl SysExIdStatus {
         }
 
         *self = match *self {
-            SysExIdStatus::Empty => if byte == 0 {
-                SysExIdStatus::NeedTwoMore
-            } else {
-                SysExIdStatus::OneByte(byte)
-            },
+            SysExIdStatus::Empty => {
+                if byte == 0 {
+                    SysExIdStatus::NeedTwoMore
+                } else {
+                    SysExIdStatus::OneByte(byte)
+                }
+            }
             SysExIdStatus::NeedTwoMore => SysExIdStatus::NeedOneMore(byte),
             SysExIdStatus::NeedOneMore(a) => SysExIdStatus::TwoByte(a, byte),
             _ => unreachable!(),
@@ -1856,22 +1858,10 @@ mod tests {
     #[test]
     fn parse_separates_interleaved_system_exclusive_message() {
         let buf: [u8; 16] = [
-            0x14, // Cable #1
-            0xf0,
-            0x7e,
-            0x1,
-            0x24, // Cable #2
-            0xf0,
-            0x7e,
-            0x5,
-            0x15, // Cable #1
-            0xf7,
-            0x00,
-            0x00,
-            0x26, // Cable #2
-            0x6,
-            0xf7,
-            0x0,
+            0x14, 0xf0, 0x7e, 0x1, // Cable #1
+            0x24, 0xf0, 0x7e, 0x5, // Cable #2
+            0x15, 0xf7, 0x00, 0x00, // Cable #1
+            0x26, 0x6, 0xf7, 0x0, // Cable #2
         ];
         let mut usb_midi_parser = UsbMidiParser::new();
         let midi_message = usb_midi_parser.parse(&buf);

@@ -69,7 +69,7 @@ fn run() -> Result<()> {
         };
 
         let apc40 = Arc::new(UsbMidiController::new(
-            AkaiAPC40MkII::open(&usb_context).chain_err(|| "Could not open Akai APC40 MkII")?
+            AkaiAPC40MkII::open(&usb_context).chain_err(|| "Could not open Akai APC40 MkII")?,
         ));
 
         // Create Synthesizer
