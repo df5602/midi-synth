@@ -119,8 +119,14 @@ fn run() -> Result<()> {
         for thread in threads {
             match thread.join() {
                 // Do not use ? operator here: we want to join all threads before returning from this function
-                Ok(_res) => {}
-                Err(e) => result = Err(e),
+                Ok(res) => {
+                    if let Err(e) = res {
+                        result = Err(e);
+                    }
+                }
+                Err(e) => {
+                    panic!(format!("Unknown error from crossbeam (join): {:?}", e));
+                }
             }
         }
 
